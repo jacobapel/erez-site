@@ -484,9 +484,9 @@
 
   </div>
 
-  <!-- כניסה למנהל (קישור סמוי בתחתית) -->
+  <!-- כניסה למנהל — לחץ P להצגה/הסתרה -->
   <div style="text-align:center; margin-top:2rem; padding-bottom:1rem;">
-    <span style="font-size:0.7rem; color:rgba(0,0,0,0.15); cursor:pointer;" onclick="toggleAdminMode()">•</span>
+    <span id="admin-dot" style="font-size:0.7rem; color:rgba(0,0,0,0.15); cursor:pointer;" onclick="toggleAdminMode()">•</span>
   </div>
 
 </div>
@@ -501,8 +501,8 @@
      הגדרות Firebase — שנה כאן את הפרטים שלך לאחר יצירת הפרויקט
      ============================================================ */
   const firebaseConfig = {
-    apiKey: "AIzaSyCQTxJbPmhKOb76zguPaXB_K8E3GwWx6yQ",
-    authDomain:        "erez-teacher.firebaseapp.com"
+    apiKey:            "AIzaSyCQTxJbPmhKOb76zguPaXB_K8E3GwWx6yQ",
+    authDomain:        "erez-teacher.firebaseapp.com",
     databaseURL:       "https://erez-teacher-default-rtdb.europe-west1.firebasedatabase.app",
     projectId:         "erez-teacher",
     storageBucket:     "erez-teacher.firebasestorage.app",
@@ -511,7 +511,7 @@
   };
   /* ============================================================ */
 
-  const ADMIN_PASSWORD = "EREZ9199"; /* ← שנה לסיסמה שלך */
+  const ADMIN_PASSWORD = "erez1234"; /* ← שנה לסיסמה שלך */
 
   const app = initializeApp(firebaseConfig);
   const db  = getDatabase(app);
@@ -813,9 +813,9 @@
     });
   };
 
-  /* ===== כניסת מנהל מוסתרת ===== */
+  /* ===== כניסת מנהל מוסתרת — מקש P ===== */
   window.toggleAdminMode = function() {
-    const loginSec   = document.getElementById('admin-login-section');
+    const loginSec    = document.getElementById('admin-login-section');
     const studentView = document.getElementById('student-view');
     if (adminMode) return;
     if (loginSec.classList.contains('hidden')) {
@@ -826,6 +826,13 @@
       studentView.classList.remove('hidden');
     }
   };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'p' || e.key === 'P') {
+      if (adminMode) return;
+      toggleAdminMode();
+    }
+  });
 
   /* ===== הודעות ===== */
   function showMsg(text, type) {
