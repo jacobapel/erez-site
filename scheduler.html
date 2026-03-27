@@ -402,7 +402,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label>אימייל</label>
+        <label>אימייל *</label>
         <input type="email" id="s-email" placeholder="example@gmail.com" />
         <div class="field-error" id="err-email"></div>
       </div>
@@ -546,7 +546,7 @@
   }
 
   function validateEmail(e) {
-    if (!e) return true; // אימייל אופציונלי
+    if (!e) return false;
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
   }
 
@@ -675,7 +675,7 @@
       selectedSlots.delete(key);
       btn.classList.remove('selected');
     } else {
-      if (selectedSlots.size >= 3) { showAlert('ניתן לבחור עד 3 זמנים בלבד', 'error'); return; }
+      if (selectedSlots.size >= 3) { showAlert('ניתן לבחור עד 3 זמנים בלבד בכל בקשה', 'error'); return; }
       selectedSlots.add(key);
       btn.classList.add('selected');
     }
@@ -736,11 +736,15 @@
       valid = false;
     }
     if (!validatePhone(phone)) {
-      document.getElementById('err-phone').textContent = 'מספר לא תקין (לדוגמה: 050-1234567)';
+      document.getElementById('err-phone').textContent = 'מספר לא תקין — חובה להתחיל ב-05 ולהכיל 10 ספרות';
       document.getElementById('s-phone').classList.add('error');
       valid = false;
     }
-    if (!validateEmail(email)) {
+    if (!email) {
+      document.getElementById('err-email').textContent = 'שדה חובה';
+      document.getElementById('s-email').classList.add('error');
+      valid = false;
+    } else if (!validateEmail(email)) {
       document.getElementById('err-email').textContent = 'כתובת אימייל לא תקינה';
       document.getElementById('s-email').classList.add('error');
       valid = false;
@@ -748,7 +752,7 @@
     if (selectedSlots.size === 0) { showAlert('נא לבחור לפחות זמן אחד', 'error'); return; }
     if (!valid) return;
 
-    /* בדיקת מכסה — מקסימום 3 שיעורים עתידיים (מאושרים + ממתינים) */
+    /* בדיקת מכסה — מקסימום 3 שיעורים עתידיים (מאושרים + ממתינים בלבד, לא נדחים) */
     const cleanPhone = parsePhone(phone);
     const snap = await get(ref(db, 'requests'));
     let activeCount = 0;
@@ -761,7 +765,7 @@
     }
     const total = activeCount + selectedSlots.size;
     if (total > 3) {
-      showAlert(`עברת את המכסה המותרת. יש לך כבר ${activeCount} שיעורים פעילים. ניתן לבקש עד 3 שיעורים בסה"כ.`, 'error');
+      showAlert(`יש לך כבר ${activeCount} שיעורים פעילים. ניתן לבקש עד 3 שיעורים בסה"כ (מאושרים + ממתינים).`, 'error');
       return;
     }
 
@@ -798,7 +802,7 @@
 
     if (snap.exists()) {
       Object.entries(snap.val()).forEach(([id, r]) => {
-        if (r.phone === phone && (r.status === 'approved' || r.status === 'pending')) {
+        if (r.phone === phone && (r.status === 'approved' || r.status === 'pending' || r.status === 'rejected')) {
           (r.slots || []).forEach(s => {
             myLessonsData.push({ id, slot: s, status: r.status, name: r.name, timestamp: r.timestamp });
           });
@@ -824,14 +828,15 @@
     data.forEach(l => {
       const parts = l.slot.split('_');
       const day = parts[0], date = parts[1], time = parts[2];
+      const isRejected = l.status === 'rejected';
       const isPending  = l.status === 'pending';
-      const isCancellable = canCancel(l.slot);
+      const isCancellable = !isRejected && canCancel(l.slot);
 
       const div = document.createElement('div');
       div.className = 'lesson-item';
 
-      const statusColor = isPending ? '#b07e1a' : 'var(--green)';
-      const statusText  = isPending ? '⏳ ממתין לאישור' : '✅ מאושר';
+      const statusColor = isPending ? '#b07e1a' : isRejected ? 'var(--red)' : 'var(--green)';
+      const statusText  = isPending ? '⏳ ממתין לאישור' : isRejected ? '🚫 נדחה' : '✅ מאושר';
 
       div.innerHTML = `
         <div class="lesson-icon">📅</div>
