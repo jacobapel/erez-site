@@ -911,7 +911,10 @@
     const search = document.getElementById('my-search').value.toLowerCase();
 
     let data = myLessonsData.filter(l => !search || l.slot.toLowerCase().includes(search));
-    data.sort((a,b) => myLessonsSortDir === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
+    data.sort((a,b) => {
+      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
+      return myLessonsSortDir === 'asc' ? da - db2 : db2 - da;
+    });
 
     list.innerHTML = '';
     if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">לא נמצאו שיעורים</p>'; return; }
@@ -962,6 +965,16 @@
       const diff = lessonDate - new Date();
       return diff > 24 * 60 * 60 * 1000;
     } catch { return false; }
+  }
+
+  function slotToDate(slot) {
+    try {
+      const parts = slot.split('_');
+      const [d, m] = parts[1].split('/');
+      const [h, min] = parts[2].split(':');
+      const year = new Date().getFullYear();
+      return new Date(year, parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+    } catch { return new Date(0); }
   }
 
   window.filterMyLessons = renderMyLessons;
@@ -1049,7 +1062,10 @@
     const search = document.getElementById('hist-search').value.toLowerCase();
 
     let data = historyData.filter(l => !search || l.slot.toLowerCase().includes(search) || l.status.includes(search));
-    data.sort((a,b) => historySortDir === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
+    data.sort((a,b) => {
+      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
+      return historySortDir === 'asc' ? da - db2 : db2 - da;
+    });
 
     list.innerHTML = '';
     if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">לא נמצאו פניות</p>'; return; }

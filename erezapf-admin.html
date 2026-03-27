@@ -544,12 +544,20 @@
     });
   }
 
+  function slotToDate(slot) {
+    try {
+      const parts = slot.split('_');
+      const [d, m] = parts[1].split('/');
+      const [h, min] = parts[2].split(':');
+      const year = new Date().getFullYear();
+      return new Date(year, parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+    } catch { return new Date(0); }
+  }
+
   /* ===== בקשות ===== */
   function renderRequests() {
     const search = (document.getElementById('req-search')?.value || '').toLowerCase();
     const entries = Object.entries(allRequests);
-
-    entries.sort((a,b) => reqSortDir === 'asc' ? a[1].timestamp - b[1].timestamp : b[1].timestamp - a[1].timestamp);
 
     const pending  = entries.filter(([,r]) => r.status === 'pending');
     const approved = entries.filter(([,r]) => r.status === 'approved');
@@ -572,6 +580,11 @@
           slots.push({ id, slot, slotText, r });
         }
       });
+    });
+
+    slots.sort((a,b) => {
+      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
+      return reqSortDir === 'asc' ? da - db2 : db2 - da;
     });
 
     if (!slots.length) { container.innerHTML = `<p style="font-size:0.83rem;color:var(--muted)">${emptyText}</p>`; return; }
@@ -781,7 +794,10 @@
       return l.name?.toLowerCase().includes(search) || l.phone?.includes(search) || l.slot.toLowerCase().includes(search) || l.status.includes(search);
     });
 
-    data.sort((a,b) => historySortDir === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
+    data.sort((a,b) => {
+      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
+      return historySortDir === 'asc' ? da - db2 : db2 - da;
+    });
 
     list.innerHTML = '';
     if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">לא נמצאו פניות</p>'; return; }
