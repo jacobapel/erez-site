@@ -568,14 +568,7 @@
   };
 
   window.switchUser = function() {
-    clearSavedPhone();
-    document.getElementById('s-phone').value   = '';
-    document.getElementById('s-name').value    = '';
-    document.getElementById('s-email').value   = '';
-    document.getElementById('my-phone').value  = '';
-    document.getElementById('hist-phone').value = '';
-    document.getElementById('my-lessons-list').innerHTML = '';
-    document.getElementById('history-list').innerHTML    = '';
+    clearSession();
     showAlert('הפרטים נמחקו. ניתן להזין טלפון חדש.', 'info');
     showView('book');
   };
@@ -596,24 +589,44 @@
     setTimeout(() => el.classList.remove('show'), 5000);
   }
 
-  /* ===== שמירת טלפון מקומית ===== */
-  function getSavedPhone() {
-    return localStorage.getItem('erez_student_phone') || '';
+  /* ===== זיכרון סשן (לא localStorage) ===== */
+  let sessionPhone = ''; // טלפון נוכחי — נשמר כל עוד הדף פתוח
+
+  function setSessionPhone(phone) {
+    sessionPhone = phone;
+    const formatted = phone.slice(0,3) + '-' + phone.slice(3);
+    document.getElementById('s-phone').value    = formatted;
+    document.getElementById('my-phone').value   = formatted;
+    document.getElementById('hist-phone').value  = formatted;
   }
 
-  function savePhone(phone) {
-    localStorage.setItem('erez_student_phone', phone);
+  function clearSession() {
+    sessionPhone = '';
+    document.getElementById('s-phone').value    = '';
+    document.getElementById('s-name').value     = '';
+    document.getElementById('s-email').value    = '';
+    document.getElementById('my-phone').value   = '';
+    document.getElementById('hist-phone').value  = '';
+    document.getElementById('my-lessons-list').innerHTML = '';
+    document.getElementById('history-list').innerHTML    = '';
   }
 
-  function clearSavedPhone() {
-    localStorage.removeItem('erez_student_phone');
-  }
-
-  /* ===== מילוי אוטומטי שם ואימייל לפי טלפון ===== */
+  /* ===== מילוי אוטומטי שם ואימייל לפי טלפון מ-Firebase ===== */
   async function autoFillFromPhone(phone) {
     if (!validatePhone(phone)) return;
     const clean = parsePhone(phone);
-    savePhone(clean);
+    setSessionPhone(clean);
+
+    /* חפש ברשימת התלמידים השמורה */
+    const studentSnap = await get(ref(db, 'students/' + clean));
+    if (studentSnap.exists()) {
+      const s = studentSnap.val();
+      if (s.name  && !document.getElementById('s-name').value)  document.getElementById('s-name').value  = s.name;
+      if (s.email && !document.getElementById('s-email').value) document.getElementById('s-email').value = s.email;
+      return;
+    }
+
+    /* אם לא נמצא ברשימה — חפש בבקשות קיימות */
     const snap = await get(ref(db, 'requests'));
     if (!snap.exists()) return;
     const match = Object.values(snap.val()).find(r => r.phone === clean);
@@ -635,18 +648,6 @@
     schedule = snap.exists() ? snap.val() : [];
     const ewSnap = await get(ref(db, 'settings/extraWeeks'));
     if (ewSnap.exists()) extraWeeks = ewSnap.val();
-
-    /* מילוי אוטומטי מהזיכרון המקומי */
-    const saved = getSavedPhone();
-    if (saved) {
-      const formatted = saved.slice(0,3) + '-' + saved.slice(3);
-      document.getElementById('s-phone').value  = formatted;
-      document.getElementById('my-phone').value  = formatted;
-      document.getElementById('hist-phone').value = formatted;
-      await autoFillFromPhone(formatted);
-      loadMyLessons();
-    }
-
     renderWeekSelector();
     await loadRequests();
     renderStudentSchedule();
@@ -840,7 +841,9 @@
       timestamp: Date.now()
     });
 
-    savePhone(cleanPhone);
+    /* שמור/עדכן תלמיד ב-Firebase */
+    await set(ref(db, 'students/' + cleanPhone), { name, email, updatedAt: Date.now() });
+    setSessionPhone(cleanPhone);
 
     selectedSlots.clear();
     document.getElementById('s-name').value  = '';
@@ -856,8 +859,9 @@
   let myLessonsSortDir = 'asc';
 
   window.loadMyLessons = async function() {
-    const phone = parsePhone(document.getElementById('my-phone').value.trim());
-    if (!validatePhone(phone)) { showAlert('מספר טלפון לא תקין', 'error'); return; }
+    const inputVal = document.getElementById('my-phone').value.trim();
+    const phone = parsePhone(inputVal || sessionPhone);
+    if (!phone || phone.length < 10) { showAlert('מספר טלפון לא תקין', 'error'); return; }
 
     const snap = await get(ref(db, 'requests'));
     const list = document.getElementById('my-lessons-list');
@@ -954,8 +958,9 @@
   let historySortDir = 'desc';
 
   window.loadHistory = async function() {
-    const phone = parsePhone(document.getElementById('hist-phone').value.trim());
-    if (!validatePhone(phone)) { showAlert('מספר טלפון לא תקין', 'error'); return; }
+    const inputVal = document.getElementById('hist-phone').value.trim();
+    const phone = parsePhone(inputVal || sessionPhone);
+    if (!phone || phone.length < 10) { showAlert('מספר טלפון לא תקין', 'error'); return; }
 
     const [reqSnap, histSnap] = await Promise.all([
       get(ref(db, 'requests')),
