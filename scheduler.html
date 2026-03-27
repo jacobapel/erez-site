@@ -365,6 +365,9 @@
     <span class="ni">🕐</span> היסטוריה
   </div>
   <div class="nav-bottom">
+    <div class="nav-exit" onclick="switchUser()" style="margin-bottom:0.5rem;">
+      <span>🔄</span> החלף משתמש
+    </div>
     <div class="nav-exit" onclick="confirmExit()">
       <span>🚪</span> יציאה מהאתר
     </div>
@@ -564,6 +567,19 @@
     document.getElementById('nav-' + name).classList.add('active');
   };
 
+  window.switchUser = function() {
+    clearSavedPhone();
+    document.getElementById('s-phone').value   = '';
+    document.getElementById('s-name').value    = '';
+    document.getElementById('s-email').value   = '';
+    document.getElementById('my-phone').value  = '';
+    document.getElementById('hist-phone').value = '';
+    document.getElementById('my-lessons-list').innerHTML = '';
+    document.getElementById('history-list').innerHTML    = '';
+    showAlert('הפרטים נמחקו. ניתן להזין טלפון חדש.', 'info');
+    showView('book');
+  };
+
   window.confirmExit = function() {
     document.getElementById('exit-dialog').classList.add('show');
   };
@@ -580,14 +596,27 @@
     setTimeout(() => el.classList.remove('show'), 5000);
   }
 
+  /* ===== שמירת טלפון מקומית ===== */
+  function getSavedPhone() {
+    return localStorage.getItem('erez_student_phone') || '';
+  }
+
+  function savePhone(phone) {
+    localStorage.setItem('erez_student_phone', phone);
+  }
+
+  function clearSavedPhone() {
+    localStorage.removeItem('erez_student_phone');
+  }
+
   /* ===== מילוי אוטומטי שם ואימייל לפי טלפון ===== */
   async function autoFillFromPhone(phone) {
     if (!validatePhone(phone)) return;
     const clean = parsePhone(phone);
+    savePhone(clean);
     const snap = await get(ref(db, 'requests'));
     if (!snap.exists()) return;
-    const entries = Object.values(snap.val());
-    const match = entries.find(r => r.phone === clean);
+    const match = Object.values(snap.val()).find(r => r.phone === clean);
     if (match) {
       if (match.name  && !document.getElementById('s-name').value)  document.getElementById('s-name').value  = match.name;
       if (match.email && !document.getElementById('s-email').value) document.getElementById('s-email').value = match.email;
@@ -606,6 +635,18 @@
     schedule = snap.exists() ? snap.val() : [];
     const ewSnap = await get(ref(db, 'settings/extraWeeks'));
     if (ewSnap.exists()) extraWeeks = ewSnap.val();
+
+    /* מילוי אוטומטי מהזיכרון המקומי */
+    const saved = getSavedPhone();
+    if (saved) {
+      const formatted = saved.slice(0,3) + '-' + saved.slice(3);
+      document.getElementById('s-phone').value  = formatted;
+      document.getElementById('my-phone').value  = formatted;
+      document.getElementById('hist-phone').value = formatted;
+      await autoFillFromPhone(formatted);
+      loadMyLessons();
+    }
+
     renderWeekSelector();
     await loadRequests();
     renderStudentSchedule();
@@ -798,6 +839,8 @@
       status: 'pending',
       timestamp: Date.now()
     });
+
+    savePhone(cleanPhone);
 
     selectedSlots.clear();
     document.getElementById('s-name').value  = '';
