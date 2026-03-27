@@ -759,13 +759,13 @@
 
     if (reqSnap.exists()) {
       Object.entries(reqSnap.val()).forEach(([id, r]) => {
-        (r.slots||[]).forEach(s => historyData.push({ id, slot: s, name: r.name, phone: r.phone, email: r.email||'', status: r.status, timestamp: r.timestamp }));
+        (r.slots||[]).forEach(s => historyData.push({ histId: 'req_'+id, id, slot: s, name: r.name, phone: r.phone, email: r.email||'', status: r.status, timestamp: r.timestamp }));
       });
     }
 
     if (histSnap.exists()) {
       Object.entries(histSnap.val()).forEach(([id, r]) => {
-        (r.slots||[]).forEach(s => historyData.push({ id, slot: s, name: r.name, phone: r.phone, email: r.email||'', status: r.status, timestamp: r.timestamp }));
+        (r.slots||[]).forEach(s => historyData.push({ histId: id, id, slot: s, name: r.name, phone: r.phone, email: r.email||'', status: r.status, timestamp: r.timestamp }));
       });
     }
 
@@ -786,7 +786,7 @@
     list.innerHTML = '';
     if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">לא נמצאו פניות</p>'; return; }
 
-    const statusMap = { approved:'✅ מאושר', pending:'⏳ ממתין', cancelled:'❌ בוטל', rejected:'🚫 נדחה' };
+    const statusMap = { approved:'✅ מאושר', pending:'⏳ ממתין', cancelled:'❌ בוטל', rejected:'🚫 נדחה', completed:'🎓 הושלם' };
 
     data.forEach(l => {
       const parts = l.slot.split('_');
@@ -798,13 +798,24 @@
           <span class="badge badge-${l.status}">${statusMap[l.status]||l.status}</span>
         </div>
         <div class="req-detail">📱 ${l.phone}${l.email ? ' | ✉️ ' + l.email : ''}</div>
-        <div class="req-detail">🕐 ${parts[0]||''} ${parts[1]||''} ${parts[2]||''}</div>`;
+        <div class="req-detail">🕐 ${parts[0]||''} ${parts[1]||''} ${parts[2]||''}</div>
+        <div class="req-actions">
+          <button class="btn btn-red" onclick="deleteHistoryItem('${l.histId}')">🗑️ מחק</button>
+        </div>`;
       list.appendChild(div);
     });
   }
 
   window.filterHistory = renderHistory;
   window.sortHistory = function(dir) { historySortDir = dir; renderHistory(); };
+
+  window.deleteHistoryItem = async function(histId) {
+    if (!histId.startsWith('req_')) {
+      await remove(ref(db, 'history/' + histId));
+      showAlert('הרשומה נמחקה', 'info');
+      loadHistory();
+    }
+  };
 </script>
 
 </body>

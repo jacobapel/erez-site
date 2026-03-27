@@ -465,7 +465,15 @@
 
 </main>
 
-<!-- ===== דיאלוג יציאה ===== -->
+<!-- ===== דיאלוג קליטה ===== -->
+<div class="dialog-overlay" id="success-dialog">
+  <div class="dialog">
+    <div style="font-size:2.5rem; margin-bottom:0.8rem;">✅</div>
+    <h3>הבקשה נקלטה!</h3>
+    <p>ארז יאשר את הבקשה בהקדם. תוכל לעקוב אחר הסטטוס תחת "השיעורים שלי".</p>
+    <button class="btn btn-navy" style="width:100%; margin-top:0.5rem;" onclick="closeDialog('success-dialog')">סגור</button>
+  </div>
+</div>
 <div class="dialog-overlay" id="exit-dialog">
   <div class="dialog">
     <h3>יציאה מהאתר</h3>
@@ -673,6 +681,41 @@
     }
   };
 
+  /* ===== ניקוי שיעורים שעברו ===== */
+  async function cleanExpiredLessons() {
+    const snap = await get(ref(db, 'requests'));
+    if (!snap.exists()) return;
+    const now = new Date();
+    const updates = [];
+    Object.entries(snap.val()).forEach(([id, r]) => {
+      const futureSlots = (r.slots||[]).filter(s => {
+        try {
+          const parts = s.split('_');
+          const [d, m] = parts[1].split('/');
+          const [h, min] = parts[2].split(':');
+          const lessonDate = new Date(now.getFullYear(), parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+          return lessonDate > now;
+        } catch { return false; }
+      });
+      if (futureSlots.length === 0) {
+        // כל השיעורים עברו — העבר להיסטוריה
+        updates.push(
+          set(ref(db, 'history/' + id), { ...r, status: r.status === 'approved' ? 'completed' : r.status, archivedAt: Date.now() }),
+          remove(ref(db, 'requests/' + id))
+        );
+      } else if (futureSlots.length !== (r.slots||[]).length) {
+        // חלק עברו — עדכן
+        const expired = (r.slots||[]).filter(s => !futureSlots.includes(s));
+        expired.forEach(slot => {
+          const hRef = push(ref(db, 'history'));
+          updates.push(set(hRef, { ...r, slots: [slot], status: r.status === 'approved' ? 'completed' : r.status, archivedAt: Date.now() }));
+        });
+        updates.push(update(ref(db, 'requests/' + id), { slots: futureSlots }));
+      }
+    });
+    await Promise.all(updates);
+  }
+
   /* ===== שליחת בקשה ===== */
   window.submitRequest = async function() {
     const name  = document.getElementById('s-name').value.trim();
@@ -680,7 +723,6 @@
     const email = document.getElementById('s-email').value.trim();
 
     let valid = true;
-
     document.getElementById('err-name').textContent  = '';
     document.getElementById('err-phone').textContent = '';
     document.getElementById('err-email').textContent = '';
@@ -693,37 +735,51 @@
       document.getElementById('s-name').classList.add('error');
       valid = false;
     }
-
     if (!validatePhone(phone)) {
       document.getElementById('err-phone').textContent = 'מספר לא תקין (לדוגמה: 050-1234567)';
       document.getElementById('s-phone').classList.add('error');
       valid = false;
     }
-
     if (!validateEmail(email)) {
       document.getElementById('err-email').textContent = 'כתובת אימייל לא תקינה';
       document.getElementById('s-email').classList.add('error');
       valid = false;
     }
-
     if (selectedSlots.size === 0) { showAlert('נא לבחור לפחות זמן אחד', 'error'); return; }
     if (!valid) return;
+
+    /* בדיקת מכסה — מקסימום 3 שיעורים עתידיים (מאושרים + ממתינים) */
+    const cleanPhone = parsePhone(phone);
+    const snap = await get(ref(db, 'requests'));
+    let activeCount = 0;
+    if (snap.exists()) {
+      Object.values(snap.val()).forEach(r => {
+        if (r.phone === cleanPhone && (r.status === 'approved' || r.status === 'pending')) {
+          activeCount += (r.slots||[]).length;
+        }
+      });
+    }
+    const total = activeCount + selectedSlots.size;
+    if (total > 3) {
+      showAlert(`עברת את המכסה המותרת. יש לך כבר ${activeCount} שיעורים פעילים. ניתן לבקש עד 3 שיעורים בסה"כ.`, 'error');
+      return;
+    }
 
     const newRef = push(ref(db, 'requests'));
     await set(newRef, {
       name,
-      phone: parsePhone(phone),
+      phone: cleanPhone,
       email,
       slots: [...selectedSlots],
       status: 'pending',
       timestamp: Date.now()
     });
 
-    showAlert('הבקשה נקלטה ✅', 'success');
     selectedSlots.clear();
     document.getElementById('s-name').value  = '';
     document.getElementById('s-phone').value = '';
     document.getElementById('s-email').value = '';
+    document.getElementById('success-dialog').classList.add('show');
     await loadRequests();
     renderStudentSchedule();
   };
@@ -893,7 +949,7 @@
   window.sortHistory = function(dir) { historySortDir = dir; renderHistory(); };
 
   /* ===== אתחול ===== */
-  loadSchedule();
+  cleanExpiredLessons().then(loadSchedule);
 </script>
 
 </body>
