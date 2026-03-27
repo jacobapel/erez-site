@@ -589,11 +589,12 @@
     setTimeout(() => el.classList.remove('show'), 5000);
   }
 
-  /* ===== זיכרון סשן (לא localStorage) ===== */
-  let sessionPhone = ''; // טלפון נוכחי — נשמר כל עוד הדף פתוח
+  /* ===== זיכרון סשן + localStorage ===== */
+  let sessionPhone = '';
 
   function setSessionPhone(phone) {
     sessionPhone = phone;
+    localStorage.setItem('erez_phone', phone);
     const formatted = phone.slice(0,3) + '-' + phone.slice(3);
     document.getElementById('s-phone').value    = formatted;
     document.getElementById('my-phone').value   = formatted;
@@ -602,6 +603,7 @@
 
   function clearSession() {
     sessionPhone = '';
+    localStorage.removeItem('erez_phone');
     document.getElementById('s-phone').value    = '';
     document.getElementById('s-name').value     = '';
     document.getElementById('s-email').value    = '';
@@ -648,6 +650,18 @@
     schedule = snap.exists() ? snap.val() : [];
     const ewSnap = await get(ref(db, 'settings/extraWeeks'));
     if (ewSnap.exists()) extraWeeks = ewSnap.val();
+
+    /* טעינת טלפון שמור */
+    const saved = localStorage.getItem('erez_phone');
+    if (saved) {
+      sessionPhone = saved;
+      const formatted = saved.slice(0,3) + '-' + saved.slice(3);
+      document.getElementById('s-phone').value    = formatted;
+      document.getElementById('my-phone').value   = formatted;
+      document.getElementById('hist-phone').value  = formatted;
+      await autoFillFromPhone(formatted);
+    }
+
     renderWeekSelector();
     await loadRequests();
     renderStudentSchedule();
