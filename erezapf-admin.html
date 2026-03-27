@@ -562,24 +562,24 @@
     const container = document.getElementById(containerId);
     container.innerHTML = '';
 
-    const filtered = entries.filter(([,r]) => {
-      if (!search) return true;
-      const slots = (r.slots||[]).join(' ');
-      return r.name?.toLowerCase().includes(search) || r.phone?.includes(search) || slots.toLowerCase().includes(search);
+    // פריסה לפי שיעור בודד
+    const slots = [];
+    entries.forEach(([id, r]) => {
+      (r.slots||[]).forEach(slot => {
+        const parts = slot.split('_');
+        const slotText = (parts[0]||'') + ' ' + (parts[1]||'') + ' ' + (parts[2]||'');
+        if (!search || r.name?.toLowerCase().includes(search) || r.phone?.includes(search) || slotText.toLowerCase().includes(search)) {
+          slots.push({ id, slot, slotText, r });
+        }
+      });
     });
 
-    if (!filtered.length) { container.innerHTML = `<p style="font-size:0.83rem;color:var(--muted)">${emptyText}</p>`; return; }
+    if (!slots.length) { container.innerHTML = `<p style="font-size:0.83rem;color:var(--muted)">${emptyText}</p>`; return; }
 
-    filtered.forEach(([id, r]) => {
+    slots.forEach(({ id, slot, slotText, r }) => {
       const isPending = r.status === 'pending';
       const div = document.createElement('div');
       div.className = 'request-item';
-
-      const slotsHtml = (r.slots||[]).map(s => {
-        const parts = s.split('_');
-        return `<span style="background:var(--gold-bg);color:#7a5a10;border-radius:12px;padding:2px 8px;font-size:0.75rem;margin-left:4px;">${parts[0]} ${parts[1]} ${parts[2]}</span>`;
-      }).join('');
-
       div.innerHTML = `
         <div class="req-header">
           <div>
@@ -588,10 +588,12 @@
           </div>
         </div>
         <div class="req-detail">📱 ${r.phone}${r.email ? ' | ✉️ ' + r.email : ''}</div>
-        <div style="margin-top:0.4rem;">${slotsHtml}</div>
+        <div style="margin-top:0.4rem;">
+          <span style="background:var(--gold-bg);color:#7a5a10;border-radius:12px;padding:2px 8px;font-size:0.75rem;">🕐 ${slotText}</span>
+        </div>
         <div class="req-actions">
-          ${isPending ? `<button class="btn btn-green" onclick="approveRequest('${id}')">✅ אשר</button>` : ''}
-          <button class="btn btn-red" onclick="startCancel('${id}')">❌ ${isPending ? 'דחה' : 'בטל'}</button>
+          ${isPending ? `<button class="btn btn-green" onclick="approveSlot('${id}','${slot}')">✅ אשר</button>` : ''}
+          <button class="btn btn-red" onclick="startCancel('${id}','${slot}')">❌ ${isPending ? 'דחה' : 'בטל'}</button>
         </div>`;
       container.appendChild(div);
     });
@@ -605,9 +607,28 @@
     showAlert('השיעור אושר ✅', 'success');
   };
 
+  window.approveSlot = async function(id, slot) {
+    // אישור שיעור בודד — מעביר לרשומה נפרדת מאושרת
+    const snap = await get(ref(db, 'requests/' + id));
+    if (!snap.exists()) return;
+    const r = snap.val();
+    const newRef = push(ref(db, 'requests'));
+    await set(newRef, { ...r, slots: [slot], status: 'approved' });
+    // הסר את ה-slot מהבקשה המקורית
+    const remaining = (r.slots||[]).filter(s => s !== slot);
+    if (remaining.length === 0) {
+      await remove(ref(db, 'requests/' + id));
+    } else {
+      await update(ref(db, 'requests/' + id), { slots: remaining });
+    }
+    showAlert('השיעור אושר ✅', 'success');
+  };
+
   let cancelTargetId = null;
-  window.startCancel = function(id) {
+  let cancelTargetSlot = null;
+  window.startCancel = function(id, slot) {
     cancelTargetId = id;
+    cancelTargetSlot = slot;
     document.getElementById('cancel-dialog').classList.add('show');
   };
 
@@ -616,22 +637,32 @@
     const snap = await get(ref(db, 'requests/' + cancelTargetId));
     if (snap.exists()) {
       const r = snap.val();
+      const slot = cancelTargetSlot;
       // שמור בהיסטוריה
-      await set(ref(db, 'history/' + cancelTargetId), { ...r, status: r.status === 'pending' ? 'rejected' : 'cancelled', cancelledAt: Date.now() });
+      const histRef = push(ref(db, 'history'));
+      await set(histRef, { ...r, slots: [slot], status: r.status === 'pending' ? 'rejected' : 'cancelled', cancelledAt: Date.now() });
       // שלח מייל אם יש
       if (r.email && EMAILJS_SERVICE !== 'YOUR_SERVICE_ID') {
-        const slots = (r.slots||[]).map(s => { const p=s.split('_'); return p[0]+' '+p[1]+' '+p[2]; }).join(', ');
+        const parts = slot.split('_');
         emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
           to_name:     r.name,
           to_email:    r.email,
-          lesson_time: slots,
+          lesson_time: (parts[0]||'') + ' ' + (parts[1]||'') + ' ' + (parts[2]||''),
           message:     'שיעורך בוטל. לפרטים נוספים צור קשר עם ארז.'
         });
       }
-      await remove(ref(db, 'requests/' + cancelTargetId));
+      // הסר slot מהבקשה
+      const remaining = (r.slots||[]).filter(s => s !== slot);
+      if (remaining.length === 0) {
+        await remove(ref(db, 'requests/' + cancelTargetId));
+      } else {
+        await update(ref(db, 'requests/' + cancelTargetId), { slots: remaining });
+      }
     }
     closeDialog('cancel-dialog');
     showAlert('הבקשה בוטלה ונשמרה בהיסטוריה', 'info');
+    cancelTargetId = null;
+    cancelTargetSlot = null;
   };
 
   /* ===== לוח שבועי ===== */

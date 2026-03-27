@@ -414,7 +414,7 @@
       <div class="schedule-grid" id="student-schedule">
         <div class="spinner">טוען זמנים...</div>
       </div>
-      <p style="font-size:0.75rem; color:var(--muted); margin-top:0.8rem;">ניתן לבחור עד 2 זמנים</p>
+      <p style="font-size:0.75rem; color:var(--muted); margin-top:0.8rem;">ניתן לבחור עד 3 זמנים</p>
     </div>
 
     <button class="btn btn-gold" onclick="submitRequest()">שלח בקשה לאישור ←</button>
@@ -667,7 +667,7 @@
       selectedSlots.delete(key);
       btn.classList.remove('selected');
     } else {
-      if (selectedSlots.size >= 2) { showAlert('ניתן לבחור עד 2 זמנים בלבד', 'error'); return; }
+      if (selectedSlots.size >= 3) { showAlert('ניתן לבחור עד 3 זמנים בלבד', 'error'); return; }
       selectedSlots.add(key);
       btn.classList.add('selected');
     }
@@ -719,7 +719,7 @@
       timestamp: Date.now()
     });
 
-    showAlert('✅ הבקשה נקלטה בהצלחה! ארז יאשר בהקדם.', 'success');
+    showAlert('הבקשה נקלטה ✅', 'success');
     selectedSlots.clear();
     document.getElementById('s-name').value  = '';
     document.getElementById('s-phone').value = '';
