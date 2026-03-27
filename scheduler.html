@@ -397,7 +397,7 @@
         </div>
         <div class="form-group">
           <label>טלפון *</label>
-          <input type="tel" id="s-phone" placeholder="05X-XXXXXXX" maxlength="11" />
+          <input type="tel" id="s-phone" placeholder="05X-XXXXXXX" maxlength="11" onblur="autoFillFromPhone(this.value)" />
           <div class="field-error" id="err-phone"></div>
         </div>
       </div>
@@ -541,8 +541,14 @@
   }
 
   function validatePhone(p) {
+    /* פורמט: 05X-XXXXXXX — הספרה הראשונה 0, השנייה 5, השלישית כל ספרה, מקף, 7 ספרות */
+    return /^05\d-\d{7}$/.test(p) || /^05\d{8}$/.test(parsePhone(p));
+  }
+
+  function formatPhone(p) {
     const clean = parsePhone(p);
-    return /^05\d{8}$/.test(clean);
+    if (clean.length === 10) return clean.slice(0,3) + '-' + clean.slice(3);
+    return p;
   }
 
   function validateEmail(e) {
@@ -572,6 +578,20 @@
     el.className = 'alert alert-' + type + ' show';
     el.textContent = text;
     setTimeout(() => el.classList.remove('show'), 5000);
+  }
+
+  /* ===== מילוי אוטומטי שם ואימייל לפי טלפון ===== */
+  async function autoFillFromPhone(phone) {
+    if (!validatePhone(phone)) return;
+    const clean = parsePhone(phone);
+    const snap = await get(ref(db, 'requests'));
+    if (!snap.exists()) return;
+    const entries = Object.values(snap.val());
+    const match = entries.find(r => r.phone === clean);
+    if (match) {
+      if (match.name  && !document.getElementById('s-name').value)  document.getElementById('s-name').value  = match.name;
+      if (match.email && !document.getElementById('s-email').value) document.getElementById('s-email').value = match.email;
+    }
   }
 
   /* ===== לוח זמנים ===== */
@@ -736,7 +756,7 @@
       valid = false;
     }
     if (!validatePhone(phone)) {
-      document.getElementById('err-phone').textContent = 'מספר לא תקין — חובה להתחיל ב-05 ולהכיל 10 ספרות';
+      document.getElementById('err-phone').textContent = 'פורמט לא תקין — נדרש: 05X-XXXXXXX (לדוגמה: 052-5257189)';
       document.getElementById('s-phone').classList.add('error');
       valid = false;
     }
