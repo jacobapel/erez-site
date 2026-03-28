@@ -785,8 +785,19 @@
   function renderScheduleForm() {
     const form = document.getElementById('schedule-form');
     form.innerHTML = '';
-    const days = schedule.length ? schedule : DAYS_HE.map(d => ({ day: d, times: [] }));
-    days.forEach((dayObj, i) => {
+
+    /* תמיד מציג את כל 7 הימים — ממזג עם מה שיש ב-Firebase */
+    const fullDays = DAYS_HE.map(dayName => {
+      const existing = schedule.find(d => d.day === dayName);
+      if (existing) return existing;
+      /* ששי ושבת — ברירת מחדל 12:00-18:00 */
+      if (dayName === 'שישי' || dayName === 'שבת') {
+        return { day: dayName, times: ['12:00','13:00','14:00','15:00','16:00','17:00','18:00'] };
+      }
+      return { day: dayName, times: [] };
+    });
+
+    fullDays.forEach((dayObj, i) => {
       const div = document.createElement('div');
       div.className = 'day-edit-row';
       div.innerHTML = `
@@ -798,8 +809,12 @@
   }
 
   window.saveSchedule = async function() {
-    const days = schedule.length ? schedule : DAYS_HE.map(d => ({ day: d, times: [] }));
-    const updated = days.map((dayObj, i) => {
+    const fullDays = DAYS_HE.map(dayName => {
+      const existing = schedule.find(d => d.day === dayName);
+      return existing || { day: dayName, times: [] };
+    });
+
+    const updated = fullDays.map((dayObj, i) => {
       const raw = document.getElementById('day-' + i).value;
       const times = raw.split(',').map(t => t.trim()).filter(t => /^\d{1,2}:\d{2}$/.test(t));
       return { day: dayObj.day, times };
