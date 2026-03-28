@@ -697,8 +697,13 @@
       const parts = slot.split('_');
       const [d, m] = parts[1].split('/');
       const [h, min] = parts[2].split(':');
-      const year = new Date().getFullYear();
-      return new Date(year, parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+      const now  = new Date();
+      const year = now.getFullYear();
+      const date = new Date(year, parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+      if (date < now && (now - date) > 30 * 24 * 60 * 60 * 1000) {
+        date.setFullYear(year + 1);
+      }
+      return date;
     } catch { return new Date(0); }
   }
 
@@ -719,7 +724,7 @@
     container.innerHTML = '';
 
     // פריסה לפי שיעור בודד
-    const slots = [];
+    let slots = [];
     entries.forEach(([id, r]) => {
       (r.slots||[]).forEach(slot => {
         const parts = slot.split('_');
