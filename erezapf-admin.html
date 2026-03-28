@@ -450,14 +450,32 @@
 
     <!-- ===== היסטוריה ===== -->
     <div id="view-history" class="view">
-      <div class="page-header"><h1>היסטוריית כל הפניות</h1></div>
-      <div class="card">
-        <input type="text" class="search-bar" id="hist-search" placeholder="חיפוש לפי שם, טלפון, תאריך, סטטוס..." oninput="filterHistory()" />
+      <div class="page-header"><h1>לוג פעולות</h1></div>
+
+      <!-- לשוניות -->
+      <div style="display:flex; gap:6px; margin-bottom:1rem;">
+        <button class="btn btn-navy btn-sm" id="log-tab-all" onclick="switchLogTab('all')">📋 כרונולוגי</button>
+        <button class="btn btn-outline btn-sm" id="log-tab-student" onclick="switchLogTab('student')">👤 לפי תלמיד</button>
+      </div>
+
+      <!-- כרונולוגי -->
+      <div id="log-view-all">
+        <input type="text" class="search-bar" id="log-all-search" placeholder="חיפוש לפי שם, טלפון, שיעור, פעולה..." oninput="renderLogAll()" />
         <div style="display:flex; gap:6px; margin-bottom:0.8rem;">
-          <button class="btn btn-outline btn-sm" onclick="sortHistory('asc')">↑ עולה</button>
-          <button class="btn btn-outline btn-sm" onclick="sortHistory('desc')">↓ יורד</button>
+          <button class="btn btn-outline btn-sm" onclick="logAllSortDir='asc'; renderLogAll()">↑ עולה</button>
+          <button class="btn btn-outline btn-sm" onclick="logAllSortDir='desc'; renderLogAll()">↓ יורד</button>
         </div>
-        <div id="history-list"><div class="spinner">טוען...</div></div>
+        <div id="log-all-list"><div class="spinner">טוען...</div></div>
+      </div>
+
+      <!-- לפי תלמיד -->
+      <div id="log-view-student" style="display:none;">
+        <div style="display:flex; gap:0.6rem; margin-bottom:1rem;">
+          <input type="tel" id="log-student-phone" placeholder="05X-XXXXXXX" style="flex:1; padding:0.6rem 0.8rem; border:0.5px solid var(--border); border-radius:8px; font-family:inherit; font-size:0.85rem; background:var(--cream);" maxlength="11" />
+          <button class="btn btn-navy" onclick="loadLogByStudent()">הצג</button>
+        </div>
+        <input type="text" class="search-bar" id="log-student-search" placeholder="חיפוש..." oninput="renderLogStudent()" style="display:none;" />
+        <div id="log-student-list"></div>
       </div>
     </div>
 
@@ -551,7 +569,7 @@
     document.getElementById('view-' + name).classList.add('active');
     document.getElementById('nav-' + name).classList.add('active');
     if (name === 'weekly') renderWeeklyTable();
-    if (name === 'history') loadHistory();
+    if (name === 'history') { switchLogTab('all'); loadLogAll(); }
     if (name === 'students') loadStudents();
   };
 
@@ -655,6 +673,7 @@
             <span class="req-name">${r.name}</span>
             <span class="badge badge-${r.status}">${isPending ? 'ממתין' : 'מאושר'}</span>
           </div>
+          <span style="font-size:0.72rem; color:var(--muted);">${new Date(r.timestamp).toLocaleDateString('he-IL')} ${new Date(r.timestamp).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span>
         </div>
         <div class="req-detail">📱 ${r.phone}${r.email ? ' | ✉️ ' + r.email : ''}</div>
         <div style="margin-top:0.4rem;">
@@ -668,6 +687,22 @@
     });
   }
 
+  /* ===== רישום לוג פעולות ===== */
+  async function logAction({ reqId, name, phone, email, slot, action, status, by }) {
+    const logRef = push(ref(db, 'log'));
+    await set(logRef, {
+      reqId:     reqId || '',
+      name:      name  || '',
+      phone:     phone || '',
+      email:     email || '',
+      slot:      slot  || '',
+      action,
+      status,
+      by,
+      timestamp: Date.now()
+    });
+  }
+
   window.filterRequests = renderRequests;
   window.sortRequests = function(dir) { reqSortDir = dir; renderRequests(); };
 
@@ -677,19 +712,19 @@
   };
 
   window.approveSlot = async function(id, slot) {
-    // אישור שיעור בודד — מעביר לרשומה נפרדת מאושרת
     const snap = await get(ref(db, 'requests/' + id));
     if (!snap.exists()) return;
     const r = snap.val();
     const newRef = push(ref(db, 'requests'));
+    const newId = newRef.key;
     await set(newRef, { ...r, slots: [slot], status: 'approved' });
-    // הסר את ה-slot מהבקשה המקורית
     const remaining = (r.slots||[]).filter(s => s !== slot);
     if (remaining.length === 0) {
       await remove(ref(db, 'requests/' + id));
     } else {
       await update(ref(db, 'requests/' + id), { slots: remaining });
     }
+    await logAction({ reqId: newId, name: r.name, phone: r.phone, email: r.email||'', slot, action: 'אושרה', status: 'מאושר', by: 'מנהל' });
     showAlert('השיעור אושר ✅', 'success');
   };
 
@@ -707,20 +742,22 @@
     if (snap.exists()) {
       const r = snap.val();
       const slot = cancelTargetSlot;
-      // שמור בהיסטוריה
-      const histRef = push(ref(db, 'history'));
-      await set(histRef, { ...r, slots: [slot], status: r.status === 'pending' ? 'rejected' : 'cancelled', cancelledAt: Date.now() });
-      // שלח מייל אם יש
+      const isPending = r.status === 'pending';
+      const actionStatus = isPending ? 'נדחה' : 'בוטל ע"י מנהל';
+      const actionLabel  = isPending ? 'נדחתה' : 'בוטלה';
+
+      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', slot, action: actionLabel, status: actionStatus, by: 'מנהל' });
+
       if (r.email && EMAILJS_SERVICE !== 'YOUR_SERVICE_ID') {
         const parts = slot.split('_');
         emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
           to_name:     r.name,
           to_email:    r.email,
           lesson_time: (parts[0]||'') + ' ' + (parts[1]||'') + ' ' + (parts[2]||''),
-          message:     'שיעורך בוטל. לפרטים נוספים צור קשר עם ארז.'
+          message:     isPending ? 'בקשתך נדחתה. לפרטים נוספים צור קשר עם ארז.' : 'שיעורך בוטל. לפרטים נוספים צור קשר עם ארז.'
         });
       }
-      // הסר slot מהבקשה
+
       const remaining = (r.slots||[]).filter(s => s !== slot);
       if (remaining.length === 0) {
         await remove(ref(db, 'requests/' + cancelTargetId));
@@ -729,7 +766,7 @@
       }
     }
     closeDialog('cancel-dialog');
-    showAlert('הבקשה בוטלה ונשמרה בהיסטוריה', 'info');
+    showAlert('הפעולה בוצעה ונרשמה בלוג', 'info');
     cancelTargetId = null;
     cancelTargetSlot = null;
   };
@@ -829,79 +866,118 @@
     showAlert('מספר השבועות עודכן ✅', 'success');
   };
 
-  /* ===== היסטוריה ===== */
-  let historyData = [];
-  let historySortDir = 'desc';
+  /* ===== לוג פעולות ===== */
+  let logAllData     = [];
+  let logStudentData = [];
+  let logAllSortDir  = 'desc';
+  let currentLogTab  = 'all';
 
-  async function loadHistory() {
-    const [reqSnap, histSnap] = await Promise.all([
-      get(ref(db, 'requests')),
-      get(ref(db, 'history'))
-    ]);
+  window.switchLogTab = function(tab) {
+    currentLogTab = tab;
+    document.getElementById('log-view-all').style.display     = tab === 'all'     ? 'block' : 'none';
+    document.getElementById('log-view-student').style.display = tab === 'student' ? 'block' : 'none';
+    document.getElementById('log-tab-all').className     = 'btn btn-sm ' + (tab === 'all'     ? 'btn-navy' : 'btn-outline');
+    document.getElementById('log-tab-student').className  = 'btn btn-sm ' + (tab === 'student' ? 'btn-navy' : 'btn-outline');
+    if (tab === 'all') loadLogAll();
+  };
 
-    historyData = [];
-
-    if (reqSnap.exists()) {
-      Object.entries(reqSnap.val()).forEach(([id, r]) => {
-        (r.slots||[]).forEach(s => historyData.push({ histId: 'req_'+id, id, slot: s, name: r.name, phone: r.phone, email: r.email||'', status: r.status, timestamp: r.timestamp }));
+  async function loadLogAll() {
+    const snap = await get(ref(db, 'log'));
+    logAllData = [];
+    if (snap.exists()) {
+      Object.entries(snap.val()).forEach(([id, l]) => {
+        logAllData.push({ logId: id, ...l });
       });
     }
-
-    if (histSnap.exists()) {
-      Object.entries(histSnap.val()).forEach(([id, r]) => {
-        (r.slots||[]).forEach(s => historyData.push({ histId: id, id, slot: s, name: r.name, phone: r.phone, email: r.email||'', status: r.status, timestamp: r.timestamp }));
-      });
-    }
-
-    renderHistory();
+    renderLogAll();
   }
 
-  function renderHistory() {
-    const list = document.getElementById('history-list');
-    const search = (document.getElementById('hist-search')?.value || '').toLowerCase();
+  window.renderLogAll = function() {
+    const list   = document.getElementById('log-all-list');
+    const search = (document.getElementById('log-all-search')?.value || '').toLowerCase();
 
-    let data = historyData.filter(l => {
-      if (!search) return true;
-      return l.name?.toLowerCase().includes(search) || l.phone?.includes(search) || l.slot.toLowerCase().includes(search) || l.status.includes(search);
-    });
+    let data = logAllData.filter(l =>
+      !search || (l.name||'').toLowerCase().includes(search) ||
+      (l.phone||'').includes(search) || (l.slot||'').toLowerCase().includes(search) ||
+      (l.action||'').includes(search) || (l.status||'').includes(search) ||
+      (l.by||'').includes(search)
+    );
 
-    data.sort((a,b) => {
-      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
-      return historySortDir === 'asc' ? da - db2 : db2 - da;
-    });
+    data.sort((a,b) => logAllSortDir === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
 
     list.innerHTML = '';
-    if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">לא נמצאו פניות</p>'; return; }
+    if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">אין רשומות</p>'; return; }
 
-    const statusMap = { approved:'✅ מאושר', pending:'⏳ ממתין', cancelled:'❌ בוטל', rejected:'🚫 נדחה', completed:'🎓 הושלם' };
+    data.forEach(l => renderLogItem(list, l));
+  };
 
-    data.forEach(l => {
-      const parts = l.slot.split('_');
-      const div = document.createElement('div');
-      div.className = 'request-item';
-      div.innerHTML = `
-        <div class="req-header">
-          <span class="req-name">${l.name}</span>
-          <span class="badge badge-${l.status}">${statusMap[l.status]||l.status}</span>
-        </div>
-        <div class="req-detail">📱 ${l.phone}${l.email ? ' | ✉️ ' + l.email : ''}</div>
-        <div class="req-detail">🕐 ${parts[0]||''} ${parts[1]||''} ${parts[2]||''}</div>
-        <div class="req-actions">
-          <button class="btn btn-red" onclick="deleteHistoryItem('${l.histId}')">🗑️ מחק</button>
-        </div>`;
-      list.appendChild(div);
-    });
+  window.loadLogByStudent = async function() {
+    const rawPhone = document.getElementById('log-student-phone').value.trim();
+    const phone = rawPhone.replace(/[-\s]/g,'');
+    if (!phone || phone.length < 10) { showAlert('מספר טלפון לא תקין', 'error'); return; }
+
+    const snap = await get(ref(db, 'log'));
+    logStudentData = [];
+    if (snap.exists()) {
+      Object.entries(snap.val()).forEach(([id, l]) => {
+        if ((l.phone||'') === phone) logStudentData.push({ logId: id, ...l });
+      });
+    }
+    document.getElementById('log-student-search').style.display = logStudentData.length ? 'block' : 'none';
+    renderLogStudent();
+  };
+
+  window.renderLogStudent = function() {
+    const list   = document.getElementById('log-student-list');
+    const search = (document.getElementById('log-student-search')?.value || '').toLowerCase();
+
+    let data = logStudentData.filter(l =>
+      !search || (l.slot||'').toLowerCase().includes(search) ||
+      (l.action||'').includes(search) || (l.status||'').includes(search)
+    );
+
+    data.sort((a,b) => a.timestamp - b.timestamp);
+
+    list.innerHTML = '';
+    if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">לא נמצאו רשומות</p>'; return; }
+
+    data.forEach(l => renderLogItem(list, l));
+  };
+
+  function renderLogItem(container, l) {
+    const parts    = (l.slot||'').split('_');
+    const slotText = parts.length >= 3 ? `${parts[0]} ${parts[1]} ${parts[2]}` : l.slot||'';
+    const date     = new Date(l.timestamp);
+    const dateStr  = date.toLocaleDateString('he-IL') + ' ' + date.toLocaleTimeString('he-IL', { hour:'2-digit', minute:'2-digit' });
+    const byColor  = l.by === 'מנהל' ? 'var(--navy)' : 'var(--green)';
+
+    const div = document.createElement('div');
+    div.className = 'request-item';
+    div.innerHTML = `
+      <div class="req-header">
+        <span class="req-name">${l.name||'—'}</span>
+        <span style="font-size:0.75rem; color:var(--muted);">${dateStr}</span>
+      </div>
+      <div class="req-detail">📱 ${(l.phone||'').slice(0,3)+'-'+(l.phone||'').slice(3)}${l.email ? ' | ✉️ ' + l.email : ''}</div>
+      ${slotText ? `<div class="req-detail">🕐 ${slotText}</div>` : ''}
+      <div class="req-detail">
+        <span style="font-weight:500;">פעולה:</span> ${l.action||''}
+        &nbsp;|&nbsp;
+        <span style="font-weight:500;">סטטוס:</span> ${l.status||''}
+        &nbsp;|&nbsp;
+        <span style="color:${byColor}; font-weight:500;">ע"י: ${l.by||''}</span>
+      </div>
+      <div class="req-actions">
+        <button class="btn btn-red" onclick="deleteLogItem('${l.logId}')">🗑️ מחק</button>
+      </div>`;
+    container.appendChild(div);
   }
 
-  window.filterHistory = renderHistory;
-  window.sortHistory = function(dir) { historySortDir = dir; renderHistory(); };
-
-  window.deleteHistoryItem = async function(histId) {
-    if (!histId.startsWith('req_')) {
-      await remove(ref(db, 'history/' + histId));
-      showAlert('הרשומה נמחקה', 'info');
-      loadHistory();
-    }
+  window.deleteLogItem = async function(logId) {
+    await remove(ref(db, 'log/' + logId));
+    showAlert('הרשומה נמחקה', 'info');
+    if (currentLogTab === 'all') loadLogAll();
+    else renderLogStudent();
   };
 
   /* ===== ניהול תלמידים ===== */

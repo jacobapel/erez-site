@@ -657,6 +657,22 @@
     await set(ref(db, 'students/' + phone), updated);
   }
 
+  /* ===== רישום לוג פעולות ===== */
+  async function logAction({ reqId, name, phone, email, slot, action, status, by }) {
+    const logRef = push(ref(db, 'log'));
+    await set(logRef, {
+      reqId:     reqId || '',
+      name:      name  || '',
+      phone:     phone || '',
+      email:     email || '',
+      slot:      slot  || '',
+      action,
+      status,
+      by,
+      timestamp: Date.now()
+    });
+  }
+
   /* ===== לוח זמנים ===== */
   let schedule = [];
   let selectedSlots = new Set();
@@ -859,6 +875,7 @@
     }
 
     const newRef = push(ref(db, 'requests'));
+    const reqId = newRef.key;
     await set(newRef, {
       name,
       phone: cleanPhone,
@@ -867,6 +884,11 @@
       status: 'pending',
       timestamp: Date.now()
     });
+
+    /* רישום לוג */
+    for (const slot of selectedSlots) {
+      await logAction({ reqId, name, phone: cleanPhone, email, slot, action: 'נקלטה', status: 'ממתין לאישור', by: 'תלמיד' });
+    }
 
     /* שמור/עדכן תלמיד ב-Firebase */
     await set(ref(db, 'students/' + cleanPhone), { name, email, updatedAt: Date.now() });
@@ -1006,9 +1028,19 @@
   window.requestCancelLesson = function(id, slot, isApproved) {
     cancelTargetId   = id;
     cancelTargetSlot = slot;
-    const msg = isApproved
-      ? 'האם לבטל את השיעור? שיעור מאושר — יש להודיע למורה טלפונית בנוסף.'
-      : 'האם לבטל את הבקשה?';
+    const lessonDate = slotToDate(slot);
+    const now = new Date();
+    const isFuture = lessonDate > now;
+    let msg;
+    if (isApproved) {
+      msg = isFuture
+        ? 'שיעור זה טרם התקיים. האם לבטל? יש להודיע למורה טלפונית בנוסף.'
+        : 'האם לבטל את השיעור? יש להודיע למורה טלפונית בנוסף.';
+    } else {
+      msg = isFuture
+        ? 'בקשה זו טרם אושרה ועדיין עתידית. האם לבטל?'
+        : 'האם לבטל את הבקשה?';
+    }
     document.getElementById('cancel-dialog-text').textContent = msg;
     document.getElementById('cancel-dialog').classList.add('show');
   };
@@ -1018,9 +1050,8 @@
     const snap = await get(ref(db, 'requests/' + cancelTargetId));
     if (snap.exists()) {
       const r = snap.val();
-      /* שמור בהיסטוריה את ה-slot הספציפי בלבד */
-      const hRef = push(ref(db, 'history'));
-      await set(hRef, { ...r, slots: [cancelTargetSlot], status: 'cancelled', cancelledAt: Date.now() });
+      /* רישום לוג */
+      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', slot: cancelTargetSlot, action: 'בוטלה', status: 'בוטל ע"י תלמיד', by: 'תלמיד' });
       /* הסר רק את ה-slot הזה מהבקשה */
       const remaining = (r.slots||[]).filter(s => s !== cancelTargetSlot);
       if (remaining.length === 0) {
