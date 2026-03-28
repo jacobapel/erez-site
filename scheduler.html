@@ -785,21 +785,15 @@
     Object.entries(snap.val()).forEach(([id, r]) => {
       const futureSlots = (r.slots||[]).filter(s => {
         try {
-          const parts = s.split('_');
-          const [d, m] = parts[1].split('/');
-          const [h, min] = parts[2].split(':');
-          const lessonDate = new Date(now.getFullYear(), parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
-          return lessonDate > now;
+          return slotToDate(s) > now;
         } catch { return false; }
       });
       if (futureSlots.length === 0) {
-        // כל השיעורים עברו — העבר להיסטוריה
         updates.push(
           set(ref(db, 'history/' + id), { ...r, status: r.status === 'approved' ? 'completed' : r.status, archivedAt: Date.now() }),
           remove(ref(db, 'requests/' + id))
         );
       } else if (futureSlots.length !== (r.slots||[]).length) {
-        // חלק עברו — עדכן
         const expired = (r.slots||[]).filter(s => !futureSlots.includes(s));
         expired.forEach(slot => {
           const hRef = push(ref(db, 'history'));
@@ -963,14 +957,8 @@
 
   function canCancel(slot) {
     try {
-      const parts = slot.split('_');
-      const dateStr = parts[1], time = parts[2];
-      const [d, m] = dateStr.split('/');
-      const [h, min] = time.split(':');
-      const year = new Date().getFullYear();
-      const lessonDate = new Date(year, parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
-      const diff = lessonDate - new Date();
-      return diff > 24 * 60 * 60 * 1000;
+      const lessonDate = slotToDate(slot);
+      return (lessonDate - new Date()) > 24 * 60 * 60 * 1000;
     } catch { return false; }
   }
 
@@ -979,8 +967,14 @@
       const parts = slot.split('_');
       const [d, m] = parts[1].split('/');
       const [h, min] = parts[2].split(':');
-      const year = new Date().getFullYear();
-      return new Date(year, parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+      const now = new Date();
+      const year = now.getFullYear();
+      const date = new Date(year, parseInt(m)-1, parseInt(d), parseInt(h), parseInt(min));
+      /* אם התאריך עבר בשנה הנוכחית — כנראה שנה הבאה */
+      if (date < now && (now - date) > 30 * 24 * 60 * 60 * 1000) {
+        date.setFullYear(year + 1);
+      }
+      return date;
     } catch { return new Date(0); }
   }
 
