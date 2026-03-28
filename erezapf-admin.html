@@ -1212,14 +1212,6 @@
     showAlert('הרשומה נמחקה', 'info');
     if (currentLogTab === 'all') loadLogAll();
     else renderLogStudent();
-  }; else {
-      const json = JSON.stringify(logAllData, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url  = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'log.json'; a.click();
-      URL.revokeObjectURL(url);
-    }
   };
 
   window.importLog = async function(event) {
@@ -1243,16 +1235,6 @@
     }
     event.target.value = '';
   };
-
-  function downloadCSV(rows, filename) {
-    const bom = '\uFEFF';
-    const csv = bom + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-  }
 
   /* ===== ניהול תלמידים ===== */
   let studentsData      = [];
