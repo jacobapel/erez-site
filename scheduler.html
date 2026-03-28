@@ -805,10 +805,24 @@
     const snap = await get(ref(db, 'requests'));
     if (!snap.exists()) return;
     const now = new Date();
+    const safetyDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); // לפחות חודש אחורה
     const updates = [];
     Object.entries(snap.val()).forEach(([id, r]) => {
-      const futureSlots  = (r.slots||[]).filter(s => { try { return slotToDate(s) > now; } catch { return false; } });
-      const expiredSlots = (r.slots||[]).filter(s => !futureSlots.includes(s));
+      const futureSlots  = (r.slots||[]).filter(s => {
+        try {
+          const d = slotToDate(s);
+          /* בטיחות — אל תמחק אם התאריך לא תקין או עתידי */
+          if (d.getFullYear() < 2024) return true; // תאריך לא תקין — שמור
+          return d > now;
+        } catch { return true; } // שגיאה — שמור
+      });
+      const expiredSlots = (r.slots||[]).filter(s => {
+        try {
+          const d = slotToDate(s);
+          if (d.getFullYear() < 2024) return false; // תאריך לא תקין — אל תמחק
+          return d <= safetyDate; // רק אם עבר לפחות חודש
+        } catch { return false; }
+      });
 
       expiredSlots.forEach(slot => {
         const cRef = push(ref(db, 'completed'));
