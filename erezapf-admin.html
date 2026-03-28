@@ -557,6 +557,13 @@
 
 <!-- Firebase + EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+
+<!-- פונקציות גלובליות לפני טעינת module -->
+<script>
+  function doLogin()  { if (window._doLogin)  window._doLogin();  }
+  function doLogout() { if (window._doLogout) window._doLogout(); }
+</script>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getDatabase, ref, set, get, onValue, update, remove, push }
@@ -581,10 +588,11 @@
     4. עדכן את 3 הקבוצות למטה
   ================================================================
   */
-  const EMAILJS_SERVICE  = 'YOUR_SERVICE_ID';   // ← עדכן
-  const EMAILJS_TEMPLATE = 'YOUR_TEMPLATE_ID';  // ← עדכן
-  const EMAILJS_KEY      = 'YOUR_PUBLIC_KEY';   // ← עדכן
+  const EMAILJS_SERVICE  = 'YOUR_SERVICE_ID';
+  const EMAILJS_TEMPLATE = 'YOUR_TEMPLATE_ID';
+  const EMAILJS_KEY      = 'YOUR_PUBLIC_KEY';
   const ADMIN_PASS       = 'erez1234';           // ← שנה לסיסמה שלך
+  window._ADMIN_PASS     = ADMIN_PASS;
 
   const app = initializeApp(firebaseConfig);
   const db  = getDatabase(app);
@@ -608,7 +616,7 @@
   }
 
   /* ===== כניסה ===== */
-  window.doLogin = function() {
+  window._doLogin = function() {
     const pass = document.getElementById('admin-pass').value;
     if (pass === ADMIN_PASS) {
       document.getElementById('login-screen').style.display = 'none';
@@ -618,12 +626,14 @@
       document.getElementById('login-error').textContent = 'סיסמה שגויה';
     }
   };
+  window.doLogin = window._doLogin;
 
-  window.doLogout = function() {
+  window._doLogout = function() {
     document.getElementById('admin-app').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('admin-pass').value = '';
   };
+  window.doLogout = window._doLogout;
 
   /* ===== ניווט ===== */
   window.showView = function(name) {
