@@ -947,10 +947,7 @@
 
       const actions = [];
       if (canCancelThis) {
-        actions.push(`<button class="btn btn-red lesson-cancel" onclick="requestCancelLesson('${l.id}','${l.slot}')">ביטול</button>`);
-      }
-      if (isPending) {
-        actions.push(`<button class="btn btn-outline lesson-cancel" onclick="editLesson('${l.id}','${l.slot}')">✏️ שינוי</button>`);
+        actions.push(`<button class="btn btn-red lesson-cancel" onclick="requestCancelLesson('${l.id}','${l.slot}',${isApproved})">ביטול</button>`);
       }
 
       div.innerHTML = `
@@ -1009,24 +1006,41 @@
     showView('book');
   };
 
-  let cancelTargetId = null;
-  window.requestCancelLesson = function(id, slot) {
-    cancelTargetId = id;
-    document.getElementById('cancel-dialog-text').textContent =
-      'האם לבטל את השיעור? יש להודיע למורה טלפונית בנוסף לביטול כאן.';
+  let cancelTargetId   = null;
+  let cancelTargetSlot = null;
+
+  window.requestCancelLesson = function(id, slot, isApproved) {
+    cancelTargetId   = id;
+    cancelTargetSlot = slot;
+    const msg = isApproved
+      ? 'האם לבטל את השיעור? שיעור מאושר — יש להודיע למורה טלפונית בנוסף.'
+      : 'האם לבטל את הבקשה?';
+    document.getElementById('cancel-dialog-text').textContent = msg;
     document.getElementById('cancel-dialog').classList.add('show');
   };
 
   window.confirmCancelLesson = async function() {
-    if (!cancelTargetId) return;
+    if (!cancelTargetId || !cancelTargetSlot) return;
     const snap = await get(ref(db, 'requests/' + cancelTargetId));
     if (snap.exists()) {
       const r = snap.val();
-      await set(ref(db, 'history/' + cancelTargetId), { ...r, status: 'cancelled', cancelledAt: Date.now() });
-      await remove(ref(db, 'requests/' + cancelTargetId));
+      /* שמור בהיסטוריה את ה-slot הספציפי בלבד */
+      const hRef = push(ref(db, 'history'));
+      await set(hRef, { ...r, slots: [cancelTargetSlot], status: 'cancelled', cancelledAt: Date.now() });
+      /* הסר רק את ה-slot הזה מהבקשה */
+      const remaining = (r.slots||[]).filter(s => s !== cancelTargetSlot);
+      if (remaining.length === 0) {
+        await remove(ref(db, 'requests/' + cancelTargetId));
+      } else {
+        await update(ref(db, 'requests/' + cancelTargetId), { slots: remaining });
+      }
     }
+    cancelTargetId   = null;
+    cancelTargetSlot = null;
     closeDialog('cancel-dialog');
-    showAlert('השיעור בוטל. אנא הודע למורה טלפונית.', 'info');
+    showAlert('השיעור בוטל.', 'info');
+    await loadRequests();
+    renderStudentSchedule();
     loadMyLessons();
   };
 
