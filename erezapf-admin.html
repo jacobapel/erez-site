@@ -766,17 +766,18 @@
   }
 
   /* ===== רישום לוג פעולות ===== */
-  async function logAction({ reqId, name, phone, email, slot, action, status, by }) {
+  async function logAction({ reqId, name, phone, email, slot, action, status, by, amount }) {
     const logRef = push(ref(db, 'log'));
     await set(logRef, {
-      reqId:     reqId || '',
-      name:      name  || '',
-      phone:     phone || '',
-      email:     email || '',
-      slot:      slot  || '',
+      reqId:     reqId  || '',
+      name:      name   || '',
+      phone:     phone  || '',
+      email:     email  || '',
+      slot:      slot   || '',
       action,
       status,
       by,
+      amount:    amount || 0,
       timestamp: Date.now()
     });
   }
@@ -857,9 +858,12 @@
     const amount = parseFloat(val) || 0;
     await update(ref(db, 'requests/' + id), { amount });
   };
+
+  let cancelTargetId   = null;
   let cancelTargetSlot = null;
+
   window.startCancel = function(id, slot) {
-    cancelTargetId = id;
+    cancelTargetId   = id;
     cancelTargetSlot = slot;
     document.getElementById('cancel-dialog').classList.add('show');
   };
@@ -1205,6 +1209,7 @@
         <span style="font-weight:500;">סטטוס:</span> ${l.status||''}
         &nbsp;|&nbsp;
         <span style="color:${byColor}; font-weight:500;">ע"י: ${l.by||''}</span>
+        ${l.amount ? `&nbsp;|&nbsp;<span style="color:var(--green);font-weight:500;">💰 ${l.amount} ₪</span>` : ''}
       </div>
       <div class="req-actions">
         <button class="btn btn-red" onclick="deleteLogItem('${l.logId}')">🗑️ מחק</button>
