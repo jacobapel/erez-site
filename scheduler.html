@@ -362,6 +362,9 @@
     <span class="ni">📋</span> השיעורים שלי
   </div>
   <div class="nav-bottom">
+    <div class="nav-exit" onclick="switchUser()" style="margin-bottom:0.5rem;">
+      <span>🔄</span> החלף תלמיד
+    </div>
     <div class="nav-exit" onclick="confirmExit()">
       <span>🚪</span> יציאה מהאתר
     </div>
@@ -514,7 +517,7 @@
   const db  = getDatabase(app);
 
   /* ===== עזרים ===== */
-  const DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי'];
+  const DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 
   function getWeekStart(offset = 0) {
     const now = new Date();
@@ -632,20 +635,17 @@
     }
   }
 
-  /* שמירת נתוני תלמיד ב-Firebase כשעוזב שדה שם או אימייל */
+  /* שמירת נתוני תלמיד ב-Firebase */
   async function saveStudentData() {
     const phone = parsePhone(document.getElementById('s-phone').value.trim());
+    if (!phone || phone.length < 10) return;
     const name  = document.getElementById('s-name').value.trim();
     const email = document.getElementById('s-email').value.trim();
-    if (!phone || phone.length < 10) return;
-    if (!name && !email) return;
     const existing = (await get(ref(db, 'students/' + phone))).val() || {};
-    await set(ref(db, 'students/' + phone), {
-      ...existing,
-      ...(name  ? { name }  : {}),
-      ...(email ? { email } : {}),
-      updatedAt: Date.now()
-    });
+    const updated = { ...existing, updatedAt: Date.now() };
+    if (name)  updated.name  = name;
+    if (email) updated.email = email;
+    await set(ref(db, 'students/' + phone), updated);
   }
 
   /* ===== לוח זמנים ===== */
@@ -868,6 +868,7 @@
     /* שמור/עדכן תלמיד ב-Firebase */
     await set(ref(db, 'students/' + cleanPhone), { name, email, updatedAt: Date.now() });
     setSessionPhone(cleanPhone);
+    saveStudentData();
 
     selectedSlots.clear();
     document.getElementById('s-name').value  = '';

@@ -334,6 +334,7 @@
     <div class="nav-item active" onclick="showView('requests')" id="nav-requests"><span class="ni">📋</span> בקשות</div>
     <div class="nav-item" onclick="showView('weekly')"   id="nav-weekly">  <span class="ni">📅</span> לוח שבועי</div>
     <div class="nav-item" onclick="showView('schedule')" id="nav-schedule"><span class="ni">⚙️</span> עריכת לוח</div>
+    <div class="nav-item" onclick="showView('students')" id="nav-students"><span class="ni">👨‍🎓</span> תלמידים</div>
     <div class="nav-item" onclick="showView('history')"  id="nav-history"> <span class="ni">🕐</span> היסטוריה</div>
     <div class="nav-bottom">
       <div class="nav-exit" onclick="window.location.href='scheduler.html'"><span>👨‍🎓</span> דף תלמיד</div>
@@ -403,6 +404,51 @@
       </div>
     </div>
 
+    <!-- ===== תלמידים ===== -->
+    <div id="view-students" class="view">
+      <div class="page-header"><h1>ניהול תלמידים</h1></div>
+
+      <!-- הוספת תלמיד -->
+      <div class="card">
+        <div class="card-title">הוסף / עדכן תלמיד</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.7rem; margin-bottom:0.7rem;">
+          <div>
+            <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.25rem;">שם מלא *</label>
+            <input type="text" id="st-name" placeholder="ישראל ישראלי" style="width:100%; padding:0.6rem 0.8rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-family:inherit; font-size:0.88rem; background:var(--cream);" />
+          </div>
+          <div>
+            <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.25rem;">טלפון * (05X-XXXXXXX)</label>
+            <input type="tel" id="st-phone" placeholder="05X-XXXXXXX" maxlength="11" style="width:100%; padding:0.6rem 0.8rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-family:inherit; font-size:0.88rem; background:var(--cream);" />
+          </div>
+        </div>
+        <div style="margin-bottom:0.7rem;">
+          <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.25rem;">אימייל</label>
+          <input type="email" id="st-email" placeholder="example@gmail.com" style="width:100%; padding:0.6rem 0.8rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-family:inherit; font-size:0.88rem; background:var(--cream);" />
+        </div>
+        <div style="margin-bottom:0.7rem;">
+          <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.25rem;">הערות</label>
+          <input type="text" id="st-notes" placeholder="הערות אישיות..." style="width:100%; padding:0.6rem 0.8rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-family:inherit; font-size:0.88rem; background:var(--cream);" />
+        </div>
+        <div id="st-error" style="font-size:0.78rem; color:var(--red); margin-bottom:0.6rem; min-height:1.2em;"></div>
+        <div style="display:flex; gap:0.6rem;">
+          <button class="btn btn-gold" onclick="saveStudent()">💾 שמור תלמיד</button>
+          <button class="btn btn-outline" onclick="clearStudentForm()">נקה</button>
+        </div>
+      </div>
+
+      <!-- רשימת תלמידים -->
+      <div class="card">
+        <div class="card-title">רשימת תלמידים</div>
+        <input type="text" class="search-bar" id="st-search" placeholder="חיפוש לפי שם, טלפון, אימייל..." oninput="filterStudents()" />
+        <div style="display:flex; gap:6px; margin-bottom:0.8rem;">
+          <button class="btn btn-outline btn-sm" onclick="sortStudents('name')">א-ת שם</button>
+          <button class="btn btn-outline btn-sm" onclick="sortStudents('phone')">טלפון</button>
+          <button class="btn btn-outline btn-sm" onclick="sortStudents('date')">תאריך הצטרפות</button>
+        </div>
+        <div id="students-list"><div class="spinner">טוען...</div></div>
+      </div>
+    </div>
+
     <!-- ===== היסטוריה ===== -->
     <div id="view-history" class="view">
       <div class="page-header"><h1>היסטוריית כל הפניות</h1></div>
@@ -467,7 +513,7 @@
 
   emailjs.init(EMAILJS_KEY);
 
-  const DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי'];
+  const DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
 
   function getWeekStart(offset = 0) {
     const now = new Date();
@@ -507,6 +553,7 @@
     document.getElementById('nav-' + name).classList.add('active');
     if (name === 'weekly') renderWeeklyTable();
     if (name === 'history') loadHistory();
+    if (name === 'students') loadStudents();
   };
 
   window.closeDialog = function(id) { document.getElementById(id).classList.remove('show'); };
@@ -524,6 +571,16 @@
   let allRequests = {};
   let reqSortDir = 'desc';
 
+  const DEFAULT_SCHEDULE = [
+    { day: 'ראשון',  times: ['15:00','16:00','17:00','18:00'] },
+    { day: 'שני',    times: ['16:00','17:00','18:00'] },
+    { day: 'שלישי', times: ['15:00','16:00','17:00'] },
+    { day: 'רביעי', times: ['16:00','17:00','18:00','19:00'] },
+    { day: 'חמישי', times: ['15:00','16:00','17:00'] },
+    { day: 'שישי',  times: ['12:00','13:00','14:00','15:00','16:00','17:00','18:00'] },
+    { day: 'שבת',   times: ['12:00','13:00','14:00','15:00','16:00','17:00','18:00'] },
+  ];
+
   async function initAdmin() {
     const [schSnap, reqSnap, ewSnap] = await Promise.all([
       get(ref(db, 'schedule')),
@@ -531,7 +588,7 @@
       get(ref(db, 'settings/extraWeeks'))
     ]);
 
-    schedule = schSnap.exists() ? schSnap.val() : [];
+    schedule = schSnap.exists() ? schSnap.val() : DEFAULT_SCHEDULE;
     allRequests = reqSnap.exists() ? reqSnap.val() : {};
     if (ewSnap.exists()) document.getElementById('extra-weeks').value = ewSnap.val();
 
@@ -831,6 +888,102 @@
       showAlert('הרשומה נמחקה', 'info');
       loadHistory();
     }
+  };
+
+  /* ===== ניהול תלמידים ===== */
+  let studentsData = [];
+  let studentsSortField = 'name';
+
+  async function loadStudents() {
+    const snap = await get(ref(db, 'students'));
+    studentsData = [];
+    if (snap.exists()) {
+      Object.entries(snap.val()).forEach(([phone, s]) => {
+        studentsData.push({ phone, name: s.name||'', email: s.email||'', notes: s.notes||'', updatedAt: s.updatedAt||0 });
+      });
+    }
+    renderStudents();
+  }
+
+  function renderStudents() {
+    const list = document.getElementById('students-list');
+    const search = (document.getElementById('st-search')?.value || '').toLowerCase();
+
+    let data = studentsData.filter(s =>
+      !search || s.name.toLowerCase().includes(search) ||
+      s.phone.includes(search) || s.email.toLowerCase().includes(search)
+    );
+
+    data.sort((a,b) => {
+      if (studentsSortField === 'name')  return a.name.localeCompare(b.name, 'he');
+      if (studentsSortField === 'phone') return a.phone.localeCompare(b.phone);
+      return b.updatedAt - a.updatedAt;
+    });
+
+    list.innerHTML = '';
+    if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">לא נמצאו תלמידים</p>'; return; }
+
+    data.forEach(s => {
+      const div = document.createElement('div');
+      div.className = 'request-item';
+      div.innerHTML = `
+        <div class="req-header">
+          <span class="req-name">${s.name || '—'}</span>
+        </div>
+        <div class="req-detail">📱 ${s.phone.slice(0,3)+'-'+s.phone.slice(3)}</div>
+        ${s.email ? `<div class="req-detail">✉️ ${s.email}</div>` : ''}
+        ${s.notes ? `<div class="req-detail">📝 ${s.notes}</div>` : ''}
+        <div class="req-actions">
+          <button class="btn btn-outline btn-sm" onclick="editStudent('${s.phone}')">✏️ עריכה</button>
+          <button class="btn btn-red" onclick="deleteStudent('${s.phone}')">🗑️ מחק</button>
+        </div>`;
+      list.appendChild(div);
+    });
+  }
+
+  window.filterStudents = renderStudents;
+  window.sortStudents = function(field) { studentsSortField = field; renderStudents(); };
+
+  window.saveStudent = async function() {
+    const name  = document.getElementById('st-name').value.trim();
+    const phone = document.getElementById('st-phone').value.trim().replace(/[-\s]/g,'');
+    const email = document.getElementById('st-email').value.trim();
+    const notes = document.getElementById('st-notes').value.trim();
+    const errEl = document.getElementById('st-error');
+    errEl.textContent = '';
+
+    if (!name)  { errEl.textContent = 'שם חובה'; return; }
+    if (!/^05\d{8}$/.test(phone)) { errEl.textContent = 'טלפון לא תקין — נדרש: 05X-XXXXXXX'; return; }
+
+    await set(ref(db, 'students/' + phone), { name, email, notes, updatedAt: Date.now() });
+    showAlert('התלמיד נשמר ✅', 'success');
+    clearStudentForm();
+    loadStudents();
+  };
+
+  window.editStudent = function(phone) {
+    const s = studentsData.find(s => s.phone === phone);
+    if (!s) return;
+    document.getElementById('st-name').value  = s.name;
+    document.getElementById('st-phone').value = s.phone.slice(0,3)+'-'+s.phone.slice(3);
+    document.getElementById('st-email').value = s.email;
+    document.getElementById('st-notes').value = s.notes;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  window.deleteStudent = async function(phone) {
+    if (!confirm('למחוק את התלמיד? הפעולה בלתי הפיכה.')) return;
+    await remove(ref(db, 'students/' + phone));
+    showAlert('התלמיד נמחק', 'info');
+    loadStudents();
+  };
+
+  window.clearStudentForm = function() {
+    document.getElementById('st-name').value  = '';
+    document.getElementById('st-phone').value = '';
+    document.getElementById('st-email').value = '';
+    document.getElementById('st-notes').value = '';
+    document.getElementById('st-error').textContent = '';
   };
 </script>
 
