@@ -1064,11 +1064,11 @@
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       downloadBlob(blob, 'log_backup.json');
     } else {
-      const rows = [['תאריך','שם','טלפון','אימייל','שיעור','פעולה','סטטוס','ע"י']];
+      const rows = [['תאריך','שם','טלפון','אימייל','שיעור','פעולה','סטטוס','ע"י','סכום ₪']];
       Object.values(data).sort((a,b) => a.timestamp - b.timestamp).forEach(l => {
         const parts = (l.slot||'').split('_');
         const date  = new Date(l.timestamp).toLocaleString('he-IL');
-        rows.push([date, l.name||'', l.phone||'', l.email||'', `${parts[0]||''} ${parts[1]||''} ${parts[2]||''}`, l.action||'', l.status||'', l.by||'']);
+        rows.push([date, l.name||'', l.phone||'', l.email||'', `${parts[0]||''} ${parts[1]||''} ${parts[2]||''}`, l.action||'', l.status||'', l.by||'', l.amount||'']);
       });
       downloadCSV(rows, 'log_backup.csv');
     }
