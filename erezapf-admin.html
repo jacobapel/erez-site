@@ -560,8 +560,8 @@
 
 <!-- פונקציות גלובליות לפני טעינת module -->
 <script>
-  function doLogin()  { if (window._doLogin)  window._doLogin();  }
-  function doLogout() { if (window._doLogout) window._doLogout(); }
+  function doLogin()       { if (window._doLogin)  window._doLogin(); }
+  function doLogout()      { if (window._doLogout) window._doLogout(); }
 </script>
 
 <script type="module">
@@ -898,7 +898,8 @@
       }
     }
     closeDialog('cancel-dialog');
-    showAlert('הפעולה בוצעה ונרשמה בלוג', 'info');
+    const emailSent = r?.email && EMAILJS_SERVICE !== 'YOUR_SERVICE_ID';
+    showAlert(emailSent ? 'הפעולה בוצעה ונרשמה בלוג. נשלחה הודעה לתלמיד.' : 'הפעולה בוצעה ונרשמה בלוג.', 'info');
     cancelTargetId = null;
     cancelTargetSlot = null;
   };
