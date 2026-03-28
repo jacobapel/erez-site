@@ -331,11 +331,12 @@
 
   <nav class="nav">
     <div class="nav-logo">ארז <span>פאנל ניהול</span></div>
-    <div class="nav-item active" onclick="showView('requests')" id="nav-requests"><span class="ni">📋</span> בקשות</div>
-    <div class="nav-item" onclick="showView('weekly')"   id="nav-weekly">  <span class="ni">📅</span> לוח שבועי</div>
-    <div class="nav-item" onclick="showView('schedule')" id="nav-schedule"><span class="ni">⚙️</span> עריכת לוח</div>
-    <div class="nav-item" onclick="showView('students')" id="nav-students"><span class="ni">👨‍🎓</span> תלמידים</div>
-    <div class="nav-item" onclick="showView('history')"  id="nav-history"> <span class="ni">🕐</span> היסטוריה</div>
+    <div class="nav-item active" onclick="showView('requests')"  id="nav-requests"> <span class="ni">📋</span> בקשות</div>
+    <div class="nav-item" onclick="showView('weekly')"    id="nav-weekly">   <span class="ni">📅</span> לוח שבועי</div>
+    <div class="nav-item" onclick="showView('schedule')"  id="nav-schedule"> <span class="ni">⚙️</span> עריכת לוח</div>
+    <div class="nav-item" onclick="showView('completed')" id="nav-completed"><span class="ni">🎓</span> שיעורים שהתקיימו</div>
+    <div class="nav-item" onclick="showView('students')"  id="nav-students"> <span class="ni">👨‍🎓</span> תלמידים</div>
+    <div class="nav-item" onclick="showView('history')"   id="nav-history">  <span class="ni">🕐</span> לוג פעולות</div>
     <div class="nav-bottom">
       <div class="nav-exit" onclick="window.location.href='scheduler.html'"><span>👨‍🎓</span> דף תלמיד</div>
       <div class="nav-exit" onclick="doLogout()"><span>🚪</span> יציאה</div>
@@ -352,9 +353,23 @@
         <h1>בקשות לאישור</h1>
       </div>
       <input type="text" class="search-bar" id="req-search" placeholder="חיפוש לפי שם, טלפון, תאריך..." oninput="filterRequests()" />
-      <div style="display:flex; gap:6px; margin-bottom:0.8rem;">
-        <button class="btn btn-outline btn-sm" onclick="sortRequests('asc')">↑ עולה</button>
-        <button class="btn btn-outline btn-sm" onclick="sortRequests('desc')">↓ יורד</button>
+      <div style="display:flex; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;">
+        <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
+        <select id="req-sort-field" onchange="reqSortField=this.value; renderRequests()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
+          <option value="date">תאריך שיעור</option>
+          <option value="submit">תאריך בקשה</option>
+          <option value="name">שם</option>
+          <option value="amount">סכום</option>
+        </select>
+        <span style="font-size:0.78rem; color:var(--muted);">ואז:</span>
+        <select id="req-sort-field2" onchange="reqSortField2=this.value; renderRequests()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
+          <option value="name">שם</option>
+          <option value="date">תאריך שיעור</option>
+          <option value="submit">תאריך בקשה</option>
+          <option value="amount">סכום</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="reqSortDir='asc'; renderRequests()">↑ עולה</button>
+        <button class="btn btn-outline btn-sm" onclick="reqSortDir='desc'; renderRequests()">↓ יורד</button>
       </div>
 
       <div class="card">
@@ -439,18 +454,48 @@
       <div class="card">
         <div class="card-title">רשימת תלמידים</div>
         <input type="text" class="search-bar" id="st-search" placeholder="חיפוש לפי שם, טלפון, אימייל..." oninput="filterStudents()" />
-        <div style="display:flex; gap:6px; margin-bottom:0.8rem;">
-          <button class="btn btn-outline btn-sm" onclick="sortStudents('name')">א-ת שם</button>
-          <button class="btn btn-outline btn-sm" onclick="sortStudents('phone')">טלפון</button>
-          <button class="btn btn-outline btn-sm" onclick="sortStudents('date')">תאריך הצטרפות</button>
+        <div style="display:flex; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;">
+          <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
+          <select id="st-sort-field" onchange="studentsSortField=this.value; renderStudents()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
+            <option value="name">שם</option>
+            <option value="phone">טלפון</option>
+            <option value="date">תאריך הצטרפות</option>
+          </select>
+          <select id="st-sort-dir" onchange="studentsSortDir=this.value; renderStudents()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
+            <option value="asc">↑ עולה</option>
+            <option value="desc">↓ יורד</option>
+          </select>
         </div>
         <div id="students-list"><div class="spinner">טוען...</div></div>
       </div>
     </div>
 
-    <!-- ===== היסטוריה ===== -->
+    <!-- ===== שיעורים שהתקיימו ===== -->
+    <div id="view-completed" class="view">
+      <div class="page-header"><h1>שיעורים שהתקיימו</h1></div>
+      <div class="card">
+        <input type="text" class="search-bar" id="comp-search" placeholder="חיפוש לפי שם, טלפון, תאריך..." oninput="renderCompleted()" />
+        <div style="display:flex; gap:6px; margin-bottom:0.8rem;">
+          <button class="btn btn-outline btn-sm" onclick="compSortDir='asc'; renderCompleted()">↑ עולה</button>
+          <button class="btn btn-outline btn-sm" onclick="compSortDir='desc'; renderCompleted()">↓ יורד</button>
+          <button class="btn btn-outline btn-sm" onclick="exportCompleted()">📥 ייצוא CSV</button>
+        </div>
+        <div id="completed-list"><div class="spinner">טוען...</div></div>
+      </div>
+    </div>
+
+    <!-- ===== לוג פעולות ===== -->
     <div id="view-history" class="view">
       <div class="page-header"><h1>לוג פעולות</h1></div>
+
+      <!-- כפתורי ייצוא/ייבוא -->
+      <div style="display:flex; gap:6px; margin-bottom:1rem; flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="exportLog('csv')">📥 ייצוא CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportLog('json')">📥 ייצוא JSON</button>
+        <label class="btn btn-outline btn-sm" style="cursor:pointer;">
+          📤 ייבוא JSON <input type="file" accept=".json" onchange="importLog(event)" style="display:none;" />
+        </label>
+      </div>
 
       <!-- לשוניות -->
       <div style="display:flex; gap:6px; margin-bottom:1rem;">
@@ -461,9 +506,12 @@
       <!-- כרונולוגי -->
       <div id="log-view-all">
         <input type="text" class="search-bar" id="log-all-search" placeholder="חיפוש לפי שם, טלפון, שיעור, פעולה..." oninput="renderLogAll()" />
-        <div style="display:flex; gap:6px; margin-bottom:0.8rem;">
-          <button class="btn btn-outline btn-sm" onclick="logAllSortDir='asc'; renderLogAll()">↑ עולה</button>
-          <button class="btn btn-outline btn-sm" onclick="logAllSortDir='desc'; renderLogAll()">↓ יורד</button>
+        <div style="display:flex; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;">
+          <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
+          <select onchange="logAllSortDir=this.value; renderLogAll()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
+            <option value="desc">↓ יורד (חדש→ישן)</option>
+            <option value="asc">↑ עולה (ישן→חדש)</option>
+          </select>
         </div>
         <div id="log-all-list"><div class="spinner">טוען...</div></div>
       </div>
@@ -490,6 +538,19 @@
     <div class="dialog-btns">
       <button class="btn btn-outline" onclick="closeDialog('cancel-dialog')">ביטול</button>
       <button class="btn btn-red" onclick="confirmCancel()">אשר ביטול</button>
+    </div>
+  </div>
+</div>
+
+<!-- דיאלוג אישור עם סכום -->
+<div class="dialog-overlay" id="approve-dialog">
+  <div class="dialog">
+    <h3>✅ אישור שיעור</h3>
+    <p>הזן את הסכום לתשלום (אפשר להשאיר ריק):</p>
+    <input type="number" id="approve-amount" placeholder="סכום ₪" min="0" style="width:100%; padding:0.65rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-size:0.9rem; text-align:center; margin-bottom:1rem; background:var(--cream);" />
+    <div class="dialog-btns">
+      <button class="btn btn-outline" onclick="closeDialog('approve-dialog')">ביטול</button>
+      <button class="btn btn-green" onclick="confirmApprove()">אשר שיעור</button>
     </div>
   </div>
 </div>
@@ -541,7 +602,9 @@
   }
 
   function formatDate(d) {
-    return d.toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit' });
+    const day   = String(d.getDate()).padStart(2,'0');
+    const month = String(d.getMonth()+1).padStart(2,'0');
+    return day + '/' + month;
   }
 
   /* ===== כניסה ===== */
@@ -568,9 +631,10 @@
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.getElementById('view-' + name).classList.add('active');
     document.getElementById('nav-' + name).classList.add('active');
-    if (name === 'weekly') renderWeeklyTable();
-    if (name === 'history') { switchLogTab('all'); loadLogAll(); }
-    if (name === 'students') loadStudents();
+    if (name === 'weekly')    renderWeeklyTable();
+    if (name === 'history')   { switchLogTab('all'); loadLogAll(); }
+    if (name === 'students')  loadStudents();
+    if (name === 'completed') loadCompleted();
   };
 
   window.closeDialog = function(id) { document.getElementById(id).classList.remove('show'); };
@@ -656,10 +720,7 @@
       });
     });
 
-    slots.sort((a,b) => {
-      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
-      return reqSortDir === 'asc' ? da - db2 : db2 - da;
-    });
+    slots = sortSlots(slots);
 
     if (!slots.length) { container.innerHTML = `<p style="font-size:0.83rem;color:var(--muted)">${emptyText}</p>`; return; }
 
@@ -676,8 +737,10 @@
           <span style="font-size:0.72rem; color:var(--muted);">${new Date(r.timestamp).toLocaleDateString('he-IL')} ${new Date(r.timestamp).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span>
         </div>
         <div class="req-detail">📱 ${r.phone}${r.email ? ' | ✉️ ' + r.email : ''}</div>
-        <div style="margin-top:0.4rem;">
+        <div style="margin-top:0.4rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <span style="background:var(--gold-bg);color:#7a5a10;border-radius:12px;padding:2px 8px;font-size:0.75rem;">🕐 ${slotText}</span>
+          ${!isPending && r.amount ? `<span style="background:var(--green-bg);color:var(--green);border-radius:12px;padding:2px 8px;font-size:0.75rem;">💰 ${r.amount} ₪</span>` : ''}
+          ${!isPending ? `<input type="number" placeholder="סכום ₪" value="${r.amount||''}" min="0" style="width:90px;padding:3px 6px;border:0.5px solid var(--border);border-radius:6px;font-size:0.78rem;" onchange="updateAmount('${id}',this.value)" />` : ''}
         </div>
         <div class="req-actions">
           ${isPending ? `<button class="btn btn-green" onclick="approveSlot('${id}','${slot}')">✅ אשר</button>` : ''}
@@ -703,6 +766,35 @@
     });
   }
 
+  /* ===== מיון בקשות ===== */
+  let reqSortField  = 'date';
+  let reqSortField2 = 'name';
+
+  function sortSlots(slots) {
+    const val = s => {
+      if (reqSortField === 'date')   return slotToDate(s.slot).getTime();
+      if (reqSortField === 'submit') return s.r.timestamp || 0;
+      if (reqSortField === 'name')   return s.r.name || '';
+      if (reqSortField === 'amount') return s.r.amount || 0;
+      return 0;
+    };
+    const val2 = s => {
+      if (reqSortField2 === 'date')   return slotToDate(s.slot).getTime();
+      if (reqSortField2 === 'submit') return s.r.timestamp || 0;
+      if (reqSortField2 === 'name')   return s.r.name || '';
+      if (reqSortField2 === 'amount') return s.r.amount || 0;
+      return 0;
+    };
+    const dir = reqSortDir === 'asc' ? 1 : -1;
+    slots.sort((a,b) => {
+      const v1a = val(a), v1b = val(b);
+      if (v1a !== v1b) return typeof v1a === 'string' ? v1a.localeCompare(v1b,'he') * dir : (v1a - v1b) * dir;
+      const v2a = val2(a), v2b = val2(b);
+      return typeof v2a === 'string' ? v2a.localeCompare(v2b,'he') : v2a - v2b;
+    });
+    return slots;
+  }
+
   window.filterRequests = renderRequests;
   window.sortRequests = function(dir) { reqSortDir = dir; renderRequests(); };
 
@@ -711,24 +803,45 @@
     showAlert('השיעור אושר ✅', 'success');
   };
 
-  window.approveSlot = async function(id, slot) {
+  /* פתיחת דיאלוג אישור עם שדה סכום */
+  let approveTargetId   = null;
+  let approveTargetSlot = null;
+
+  window.approveSlot = function(id, slot) {
+    approveTargetId   = id;
+    approveTargetSlot = slot;
+    document.getElementById('approve-amount').value = '';
+    document.getElementById('approve-dialog').classList.add('show');
+  };
+
+  window.confirmApprove = async function() {
+    const id   = approveTargetId;
+    const slot = approveTargetSlot;
+    const amount = parseFloat(document.getElementById('approve-amount').value) || 0;
+    if (!id || !slot) return;
+
     const snap = await get(ref(db, 'requests/' + id));
     if (!snap.exists()) return;
     const r = snap.val();
     const newRef = push(ref(db, 'requests'));
     const newId = newRef.key;
-    await set(newRef, { ...r, slots: [slot], status: 'approved' });
+    await set(newRef, { ...r, slots: [slot], status: 'approved', amount });
     const remaining = (r.slots||[]).filter(s => s !== slot);
     if (remaining.length === 0) {
       await remove(ref(db, 'requests/' + id));
     } else {
       await update(ref(db, 'requests/' + id), { slots: remaining });
     }
-    await logAction({ reqId: newId, name: r.name, phone: r.phone, email: r.email||'', slot, action: 'אושרה', status: 'מאושר', by: 'מנהל' });
+    await logAction({ reqId: newId, name: r.name, phone: r.phone, email: r.email||'', slot, action: 'אושרה', status: 'מאושר', by: 'מנהל', amount });
+    closeDialog('approve-dialog');
     showAlert('השיעור אושר ✅', 'success');
+    approveTargetId = approveTargetSlot = null;
   };
 
-  let cancelTargetId = null;
+  window.updateAmount = async function(id, val) {
+    const amount = parseFloat(val) || 0;
+    await update(ref(db, 'requests/' + id), { amount });
+  };
   let cancelTargetSlot = null;
   window.startCancel = function(id, slot) {
     cancelTargetId = id;
@@ -866,6 +979,117 @@
     showAlert('מספר השבועות עודכן ✅', 'success');
   };
 
+  /* ===== שיעורים שהתקיימו ===== */
+  let completedData = [];
+  let compSortDir   = 'desc';
+
+  async function loadCompleted() {
+    const snap = await get(ref(db, 'completed'));
+    completedData = [];
+    if (snap.exists()) {
+      Object.entries(snap.val()).forEach(([id, r]) => {
+        (r.slots||[]).forEach(slot => completedData.push({ id, slot, name: r.name, phone: r.phone, email: r.email||'', status: r.status, archivedAt: r.archivedAt||r.timestamp||0 }));
+      });
+    }
+    renderCompleted();
+  }
+
+  window.renderCompleted = function() {
+    const list   = document.getElementById('completed-list');
+    const search = (document.getElementById('comp-search')?.value || '').toLowerCase();
+
+    let data = completedData.filter(l =>
+      !search || l.name.toLowerCase().includes(search) || l.phone.includes(search) || l.slot.toLowerCase().includes(search)
+    );
+
+    data.sort((a,b) => {
+      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
+      return compSortDir === 'asc' ? da - db2 : db2 - da;
+    });
+
+    list.innerHTML = '';
+    if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">אין שיעורים</p>'; return; }
+
+    data.forEach(l => {
+      const parts = l.slot.split('_');
+      const div = document.createElement('div');
+      div.className = 'request-item';
+      div.innerHTML = `
+        <div class="req-header">
+          <span class="req-name">${l.name}</span>
+          <span class="badge badge-approved">🎓 הושלם</span>
+        </div>
+        <div class="req-detail">📱 ${(l.phone||'').slice(0,3)+'-'+(l.phone||'').slice(3)}${l.email ? ' | ✉️ ' + l.email : ''}</div>
+        <div class="req-detail">🕐 ${parts[0]||''} ${parts[1]||''} ${parts[2]||''}</div>`;
+      list.appendChild(div);
+    });
+  };
+
+  window.exportCompleted = function() {
+    const rows = [['שם','טלפון','אימייל','יום','תאריך','שעה','סטטוס']];
+    completedData.forEach(l => {
+      const parts = l.slot.split('_');
+      rows.push([l.name, l.phone, l.email, parts[0]||'', parts[1]||'', parts[2]||'', l.status]);
+    });
+    downloadCSV(rows, 'completed_lessons.csv');
+  };
+
+  /* ===== ייצוא / ייבוא לוג ===== */
+  window.exportLog = async function(format) {
+    const snap = await get(ref(db, 'log'));
+    if (!snap.exists()) { showAlert('אין נתונים לייצוא', 'info'); return; }
+    const data = snap.val();
+
+    if (format === 'json') {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      downloadBlob(blob, 'log_backup.json');
+    } else {
+      const rows = [['תאריך','שם','טלפון','אימייל','שיעור','פעולה','סטטוס','ע"י']];
+      Object.values(data).sort((a,b) => a.timestamp - b.timestamp).forEach(l => {
+        const parts = (l.slot||'').split('_');
+        const date  = new Date(l.timestamp).toLocaleString('he-IL');
+        rows.push([date, l.name||'', l.phone||'', l.email||'', `${parts[0]||''} ${parts[1]||''} ${parts[2]||''}`, l.action||'', l.status||'', l.by||'']);
+      });
+      downloadCSV(rows, 'log_backup.csv');
+    }
+  };
+
+  window.importLog = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    try {
+      const data = JSON.parse(text);
+      let count = 0;
+      for (const [, entry] of Object.entries(data)) {
+        const logRef = push(ref(db, 'log'));
+        await set(logRef, entry);
+        count++;
+      }
+      showAlert(`יובאו ${count} רשומות בהצלחה ✅`, 'success');
+      loadLogAll();
+    } catch (e) {
+      showAlert('שגיאה בקובץ — ודא שזה JSON תקין', 'error');
+    }
+    event.target.value = '';
+  };
+
+  /* ===== עזרי ייצוא ===== */
+  function downloadCSV(rows, filename) {
+    const bom = '\uFEFF';
+    const csv = bom + rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',')).join('\n');
+    downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8;' }), filename);
+  }
+
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   /* ===== לוג פעולות ===== */
   let logAllData     = [];
   let logStudentData = [];
@@ -980,9 +1204,126 @@
     else renderLogStudent();
   };
 
+  /* ===== שיעורים שהתקיימו ===== */
+  let completedData = [];
+  let compSortDir   = 'desc';
+
+  async function loadCompleted() {
+    const snap = await get(ref(db, 'completed'));
+    completedData = [];
+    if (snap.exists()) {
+      Object.entries(snap.val()).forEach(([id, r]) => {
+        (r.slots||[]).forEach(slot => {
+          completedData.push({ id, slot, name: r.name||'', phone: r.phone||'', email: r.email||'', status: r.status||'', archivedAt: r.archivedAt||0 });
+        });
+      });
+    }
+    renderCompleted();
+  }
+
+  window.renderCompleted = function() {
+    const list   = document.getElementById('completed-list');
+    const search = (document.getElementById('comp-search')?.value || '').toLowerCase();
+
+    let data = completedData.filter(l =>
+      !search || l.name.toLowerCase().includes(search) ||
+      l.phone.includes(search) || l.slot.toLowerCase().includes(search)
+    );
+
+    data.sort((a,b) => {
+      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
+      return compSortDir === 'asc' ? da - db2 : db2 - da;
+    });
+
+    list.innerHTML = '';
+    if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">אין שיעורים שהתקיימו</p>'; return; }
+
+    data.forEach(l => {
+      const parts = l.slot.split('_');
+      const div = document.createElement('div');
+      div.className = 'request-item';
+      div.innerHTML = `
+        <div class="req-header">
+          <span class="req-name">${l.name}</span>
+          <span class="badge badge-approved">🎓 הושלם</span>
+        </div>
+        <div class="req-detail">📱 ${(l.phone||'').slice(0,3)+'-'+(l.phone||'').slice(3)}${l.email ? ' | ✉️ ' + l.email : ''}</div>
+        <div class="req-detail">🕐 ${parts[0]||''} ${parts[1]||''} ${parts[2]||''}</div>`;
+      list.appendChild(div);
+    });
+  };
+
+  window.exportCompleted = function() {
+    const rows = [['שם','טלפון','אימייל','יום','תאריך','שעה','סטטוס']];
+    completedData.forEach(l => {
+      const parts = l.slot.split('_');
+      rows.push([l.name, l.phone, l.email, parts[0]||'', parts[1]||'', parts[2]||'', l.status]);
+    });
+    downloadCSV(rows, 'completed_lessons.csv');
+  };
+
+  /* ===== ייצוא/ייבוא לוג ===== */
+  window.exportLog = function(format) {
+    if (format === 'csv') {
+      const rows = [['שם','טלפון','אימייל','שיעור','פעולה','סטטוס','ע"י','תאריך','שעה']];
+      logAllData.forEach(l => {
+        const parts = (l.slot||'').split('_');
+        const d = new Date(l.timestamp);
+        rows.push([
+          l.name||'', l.phone||'', l.email||'',
+          `${parts[0]||''} ${parts[1]||''} ${parts[2]||''}`.trim(),
+          l.action||'', l.status||'', l.by||'',
+          d.toLocaleDateString('he-IL'),
+          d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})
+        ]);
+      });
+      downloadCSV(rows, 'log.csv');
+    } else {
+      const json = JSON.stringify(logAllData, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'log.json'; a.click();
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  window.importLog = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const text = await file.text();
+    try {
+      const items = JSON.parse(text);
+      if (!Array.isArray(items)) { showAlert('קובץ לא תקין', 'error'); return; }
+      const updates = [];
+      items.forEach(item => {
+        const { logId, ...data } = item;
+        const newRef = push(ref(db, 'log'));
+        updates.push(set(newRef, data));
+      });
+      await Promise.all(updates);
+      showAlert(`יובאו ${items.length} רשומות ✅`, 'success');
+      loadLogAll();
+    } catch (e) {
+      showAlert('שגיאה בקריאת הקובץ', 'error');
+    }
+    event.target.value = '';
+  };
+
+  function downloadCSV(rows, filename) {
+    const bom = '\uFEFF';
+    const csv = bom + rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  }
+
   /* ===== ניהול תלמידים ===== */
-  let studentsData = [];
+  let studentsData      = [];
   let studentsSortField = 'name';
+  let studentsSortDir   = 'asc';
 
   async function loadStudents() {
     const snap = await get(ref(db, 'students'));
@@ -1005,9 +1346,10 @@
     );
 
     data.sort((a,b) => {
-      if (studentsSortField === 'name')  return a.name.localeCompare(b.name, 'he');
-      if (studentsSortField === 'phone') return a.phone.localeCompare(b.phone);
-      return b.updatedAt - a.updatedAt;
+      const dir = studentsSortDir === 'asc' ? 1 : -1;
+      if (studentsSortField === 'name')  return a.name.localeCompare(b.name, 'he') * dir;
+      if (studentsSortField === 'phone') return a.phone.localeCompare(b.phone) * dir;
+      return (b.updatedAt - a.updatedAt) * dir;
     });
 
     list.innerHTML = '';

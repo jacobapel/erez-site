@@ -435,9 +435,12 @@
         <button class="btn btn-navy" onclick="loadMyLessons()">הצג</button>
       </div>
       <input type="text" class="search-bar" id="my-search" placeholder="חיפוש..." oninput="filterMyLessons()" style="display:none;" />
-      <div style="display:flex; gap:6px; margin-bottom:0.8rem; display:none;" id="my-sort-row">
-        <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 10px;" onclick="sortMyLessons('asc')">↑ עולה</button>
-        <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 10px;" onclick="sortMyLessons('desc')">↓ יורד</button>
+      <div style="display:none; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;" id="my-sort-row">
+        <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
+        <select onchange="myLessonsSortDir=this.value; renderMyLessons()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
+          <option value="asc">↑ תאריך עולה</option>
+          <option value="desc">↓ תאריך יורד</option>
+        </select>
       </div>
       <div id="my-lessons-list"></div>
     </div>
@@ -455,9 +458,12 @@
         <button class="btn btn-navy" onclick="loadHistory()">הצג</button>
       </div>
       <input type="text" class="search-bar" id="hist-search" placeholder="חיפוש..." oninput="filterHistory()" style="display:none;" />
-      <div style="display:flex; gap:6px; margin-bottom:0.8rem; display:none;" id="hist-sort-row">
-        <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 10px;" onclick="sortHistory('asc')">↑ עולה</button>
-        <button class="btn btn-outline" style="font-size:0.75rem; padding:4px 10px;" onclick="sortHistory('desc')">↓ יורד</button>
+      <div style="display:none; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;" id="hist-sort-row">
+        <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
+        <select onchange="historySortDir=this.value; renderHistory()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
+          <option value="asc">↑ תאריך עולה</option>
+          <option value="desc">↓ תאריך יורד</option>
+        </select>
       </div>
       <div id="history-list"></div>
     </div>
@@ -529,7 +535,9 @@
   }
 
   function formatDate(d) {
-    return d.toLocaleDateString('he-IL', { day:'2-digit', month:'2-digit' });
+    const day   = String(d.getDate()).padStart(2,'0');
+    const month = String(d.getMonth()+1).padStart(2,'0');
+    return day + '/' + month;
   }
 
   function formatFullDate(d) {
@@ -792,29 +800,29 @@
     }
   };
 
-  /* ===== ניקוי שיעורים שעברו ===== */
+  /* ===== ניקוי שיעורים שעברו — העברה ל-completed/ ===== */
   async function cleanExpiredLessons() {
     const snap = await get(ref(db, 'requests'));
     if (!snap.exists()) return;
     const now = new Date();
     const updates = [];
     Object.entries(snap.val()).forEach(([id, r]) => {
-      const futureSlots = (r.slots||[]).filter(s => {
-        try {
-          return slotToDate(s) > now;
-        } catch { return false; }
+      const futureSlots  = (r.slots||[]).filter(s => { try { return slotToDate(s) > now; } catch { return false; } });
+      const expiredSlots = (r.slots||[]).filter(s => !futureSlots.includes(s));
+
+      expiredSlots.forEach(slot => {
+        const cRef = push(ref(db, 'completed'));
+        updates.push(set(cRef, {
+          ...r,
+          slots: [slot],
+          status: r.status === 'approved' ? 'completed' : r.status,
+          archivedAt: Date.now()
+        }));
       });
+
       if (futureSlots.length === 0) {
-        updates.push(
-          set(ref(db, 'history/' + id), { ...r, status: r.status === 'approved' ? 'completed' : r.status, archivedAt: Date.now() }),
-          remove(ref(db, 'requests/' + id))
-        );
-      } else if (futureSlots.length !== (r.slots||[]).length) {
-        const expired = (r.slots||[]).filter(s => !futureSlots.includes(s));
-        expired.forEach(slot => {
-          const hRef = push(ref(db, 'history'));
-          updates.push(set(hRef, { ...r, slots: [slot], status: r.status === 'approved' ? 'completed' : r.status, archivedAt: Date.now() }));
-        });
+        updates.push(remove(ref(db, 'requests/' + id)));
+      } else if (expiredSlots.length > 0) {
         updates.push(update(ref(db, 'requests/' + id), { slots: futureSlots }));
       }
     });
@@ -921,7 +929,7 @@
       Object.entries(snap.val()).forEach(([id, r]) => {
         if (r.phone === phone && (r.status === 'approved' || r.status === 'pending' || r.status === 'rejected')) {
           (r.slots || []).forEach(s => {
-            myLessonsData.push({ id, slot: s, status: r.status, name: r.name, timestamp: r.timestamp });
+            myLessonsData.push({ id, slot: s, status: r.status, name: r.name, timestamp: r.timestamp, amount: r.amount||0 });
           });
         }
       });
@@ -960,6 +968,7 @@
 
       const statusColor = isPending ? '#b07e1a' : isRejected ? 'var(--red)' : 'var(--green)';
       const statusText  = isPending ? '⏳ ממתין לאישור' : isRejected ? '🚫 נדחה' : '✅ מאושר';
+      const amountLine  = (!isPending && !isRejected && l.amount) ? `<div class="lesson-status" style="color:var(--green);margin-top:2px;">💰 לתשלום: ${l.amount} ₪</div>` : '';
 
       const actions = [];
       if (canCancelThis) {
@@ -971,6 +980,7 @@
         <div class="lesson-info">
           <div class="lesson-time">${day} ${date} | ${time}</div>
           <div class="lesson-status" style="color:${statusColor}">${statusText}</div>
+          ${amountLine}
         </div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;">${actions.join('')}</div>`;
       list.appendChild(div);
