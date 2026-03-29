@@ -342,11 +342,13 @@
     @media (max-width: 600px) {
       .nav { width: 100%; height: auto; flex-direction: row; position: fixed; bottom: 0; top: auto; right: 0; padding: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.15); }
       .nav-logo { display: none; }
-      .nav-bottom { display: none; }
+      .nav-bottom { display: none !important; }
       .nav-item { flex-direction: column; flex: 1; font-size: 0.65rem; padding: 0.5rem 0.3rem; gap: 0.2rem; border-right: none; border-top: 3px solid transparent; }
       .nav-item.active { border-top-color: var(--gold); border-right-color: transparent; }
       .main { margin-right: 0; padding: 1rem; padding-bottom: 5rem; }
       .form-row { grid-template-columns: 1fr; }
+      #nav-back-admin-mobile { display: none; }
+      #nav-back-admin-mobile.show { display: flex !important; }
     }
   </style>
 </head>
@@ -361,9 +363,15 @@
   <div class="nav-item" onclick="showView('my')" id="nav-my">
     <span class="ni">📋</span> השיעורים שלי
   </div>
+  <div class="nav-item" id="nav-back-admin-mobile" style="display:none;" onclick="history.back()">
+    <span class="ni">🔙</span> למנהל
+  </div>
   <div class="nav-bottom">
     <div class="nav-exit" onclick="switchUser()" style="margin-bottom:0.5rem;">
       <span>🔄</span> החלף תלמיד
+    </div>
+    <div id="nav-back-admin" class="nav-exit" style="display:none; margin-bottom:0.5rem;" onclick="history.back()">
+      <span>🔙</span> חזרה למנהל
     </div>
     <div class="nav-exit" onclick="confirmExit()">
       <span>🚪</span> יציאה מהאתר
@@ -1214,6 +1222,11 @@
   window.sortHistory = function(dir) { historySortDir = dir; renderHistory(); };
 
   /* ===== אתחול ===== */
+  if (sessionStorage.getItem('fromAdmin') === '1') {
+    document.getElementById('nav-back-admin').style.display        = 'flex';
+    document.getElementById('nav-back-admin-mobile').style.display = 'flex';
+  }
+
   cleanExpiredLessons().then(loadSchedule);
 </script>
 
