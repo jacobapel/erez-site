@@ -772,13 +772,14 @@
   }
 
   /* ===== רישום לוג פעולות ===== */
-  async function logAction({ reqId, name, phone, email, slot, action, status, by, amount }) {
+  async function logAction({ reqId, name, phone, email, city, slot, action, status, by, amount }) {
     const logRef = push(ref(db, 'log'));
     await set(logRef, {
       reqId:     reqId  || '',
       name:      name   || '',
       phone:     phone  || '',
       email:     email  || '',
+      city:      city   || '',
       slot:      slot   || '',
       action,
       status,
@@ -854,7 +855,7 @@
     } else {
       await update(ref(db, 'requests/' + id), { slots: remaining });
     }
-    await logAction({ reqId: newId, name: r.name, phone: r.phone, email: r.email||'', slot, action: 'אושרה', status: 'מאושר', by: 'מנהל', amount });
+    await logAction({ reqId: newId, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', slot, action: 'אושרה', status: 'מאושר', by: 'מנהל', amount });
     closeDialog('approve-dialog');
     showAlert('השיעור אושר ✅', 'success');
     approveTargetId = approveTargetSlot = null;
@@ -884,7 +885,7 @@
       const actionStatus = isPending ? 'נדחה' : 'בוטל ע"י מנהל';
       const actionLabel  = isPending ? 'נדחתה' : 'בוטלה';
 
-      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', slot, action: actionLabel, status: actionStatus, by: 'מנהל' });
+      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', slot, action: actionLabel, status: actionStatus, by: 'מנהל' });
 
       if (r.email && EMAILJS_SERVICE !== 'YOUR_SERVICE_ID') {
         const parts = slot.split('_');
@@ -1045,17 +1046,17 @@
           <span class="req-name">${l.name}</span>
           <span class="badge badge-approved">🎓 הושלם</span>
         </div>
-        <div class="req-detail">📱 ${(l.phone||'').slice(0,3)+'-'+(l.phone||'').slice(3)}${l.email ? ' | ✉️ ' + l.email : ''}</div>
+        <div class="req-detail">📱 ${(l.phone||'').slice(0,3)+'-'+(l.phone||'').slice(3)}${l.email ? ' | ✉️ ' + l.email : ''}${l.city ? ' | 📍 ' + l.city : ''}</div>
         <div class="req-detail">🕐 ${parts[0]||''} ${parts[1]||''} ${parts[2]||''}</div>`;
       list.appendChild(div);
     });
   };
 
   window.exportCompleted = function() {
-    const rows = [['שם','טלפון','אימייל','יום','תאריך','שעה','סטטוס']];
+    const rows = [['שם','טלפון','אימייל','יישוב','יום','תאריך','שעה','סטטוס']];
     completedData.forEach(l => {
       const parts = l.slot.split('_');
-      rows.push([l.name, l.phone, l.email, parts[0]||'', parts[1]||'', parts[2]||'', l.status]);
+      rows.push([l.name, l.phone, l.email, l.city||'', parts[0]||'', parts[1]||'', parts[2]||'', l.status]);
     });
     downloadCSV(rows, 'completed_lessons.csv');
   };
@@ -1070,11 +1071,11 @@
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       downloadBlob(blob, 'log_backup.json');
     } else {
-      const rows = [['תאריך','שם','טלפון','אימייל','שיעור','פעולה','סטטוס','ע"י','סכום ₪']];
+      const rows = [['תאריך','שם','טלפון','אימייל','יישוב','שיעור','פעולה','סטטוס','ע"י','סכום ₪']];
       Object.values(data).sort((a,b) => a.timestamp - b.timestamp).forEach(l => {
         const parts = (l.slot||'').split('_');
         const date  = new Date(l.timestamp).toLocaleString('he-IL');
-        rows.push([date, l.name||'', l.phone||'', l.email||'', `${parts[0]||''} ${parts[1]||''} ${parts[2]||''}`, l.action||'', l.status||'', l.by||'', l.amount||'']);
+        rows.push([date, l.name||'', l.phone||'', l.email||'', l.city||'', `${parts[0]||''} ${parts[1]||''} ${parts[2]||''}`, l.action||'', l.status||'', l.by||'', l.amount||'']);
       });
       downloadCSV(rows, 'log_backup.csv');
     }
@@ -1208,7 +1209,7 @@
         <span class="req-name">${l.name||'—'}</span>
         <span style="font-size:0.75rem; color:var(--muted);">${dateStr}</span>
       </div>
-      <div class="req-detail">📱 ${(l.phone||'').slice(0,3)+'-'+(l.phone||'').slice(3)}${l.email ? ' | ✉️ ' + l.email : ''}</div>
+      <div class="req-detail">📱 ${(l.phone||'').slice(0,3)+'-'+(l.phone||'').slice(3)}${l.email ? ' | ✉️ ' + l.email : ''}${l.city ? ' | 📍 ' + l.city : ''}</div>
       ${slotText ? `<div class="req-detail">🕐 ${slotText}</div>` : ''}
       <div class="req-detail">
         <span style="font-weight:500;">פעולה:</span> ${l.action||''}

@@ -696,13 +696,14 @@
   }
 
   /* ===== רישום לוג פעולות ===== */
-  async function logAction({ reqId, name, phone, email, slot, action, status, by }) {
+  async function logAction({ reqId, name, phone, email, city, slot, action, status, by }) {
     const logRef = push(ref(db, 'log'));
     await set(logRef, {
       reqId:     reqId || '',
       name:      name  || '',
       phone:     phone || '',
       email:     email || '',
+      city:      city  || '',
       slot:      slot  || '',
       action,
       status,
@@ -947,7 +948,7 @@
 
     /* רישום לוג */
     for (const slot of selectedSlots) {
-      await logAction({ reqId, name, phone: cleanPhone, email, slot, action: 'נקלטה', status: 'ממתין לאישור', by: 'תלמיד' });
+      await logAction({ reqId, name, phone: cleanPhone, email, city, slot, action: 'נקלטה', status: 'ממתין לאישור', by: 'תלמיד' });
     }
 
     /* שמור/עדכן תלמיד ב-Firebase */
@@ -1114,7 +1115,7 @@
     if (snap.exists()) {
       const r = snap.val();
       /* רישום לוג */
-      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', slot: cancelTargetSlot, action: 'בוטלה', status: 'בוטל ע"י תלמיד', by: 'תלמיד' });
+      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', slot: cancelTargetSlot, action: 'בוטלה', status: 'בוטל ע"י תלמיד', by: 'תלמיד' });
       /* הסר רק את ה-slot הזה מהבקשה */
       const remaining = (r.slots||[]).filter(s => s !== cancelTargetSlot);
       if (remaining.length === 0) {
