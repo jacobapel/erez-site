@@ -338,7 +338,7 @@
     <div class="nav-item" onclick="showView('students')"  id="nav-students"> <span class="ni">👨‍🎓</span> תלמידים</div>
     <div class="nav-item" onclick="showView('history')"   id="nav-history">  <span class="ni">🕐</span> לוג פעולות</div>
     <div class="nav-bottom">
-      <div class="nav-exit" onclick="localStorage.setItem('fromAdmin','1'); window.location.href='scheduler.html'"><span>👨‍🎓</span> דף תלמיד</div>
+      <div class="nav-exit" onclick="localStorage.setItem('fromAdmin','1'); window.open('scheduler.html','_blank')"><span>👨‍🎓</span> דף תלמיד</div>
       <div class="nav-exit" onclick="doLogout()"><span>🚪</span> יציאה</div>
     </div>
   </nav>
@@ -625,6 +625,7 @@
   window._doLogin = function() {
     const pass = document.getElementById('admin-pass').value;
     if (pass === ADMIN_PASS) {
+      localStorage.setItem('adminAuth', '1');
       document.getElementById('login-screen').style.display = 'none';
       document.getElementById('admin-app').style.display = 'block';
       initAdmin();
@@ -635,11 +636,20 @@
   window.doLogin = window._doLogin;
 
   window._doLogout = function() {
+    localStorage.removeItem('adminAuth');
+    localStorage.removeItem('fromAdmin');
     document.getElementById('admin-app').style.display = 'none';
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('admin-pass').value = '';
   };
   window.doLogout = window._doLogout;
+
+  /* ===== כניסה אוטומטית אם כבר מאומת ===== */
+  if (localStorage.getItem('adminAuth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-app').style.display = 'block';
+    initAdmin();
+  }
 
   /* ===== ניווט ===== */
   window.showView = function(name) {

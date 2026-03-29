@@ -363,14 +363,14 @@
   <div class="nav-item" onclick="showView('my')" id="nav-my">
     <span class="ni">📋</span> השיעורים שלי
   </div>
-  <div class="nav-item" id="nav-back-admin-mobile" style="display:none;" onclick="history.back()">
+  <div class="nav-item" id="nav-back-admin-mobile" style="display:none;" onclick="localStorage.removeItem('fromAdmin'); window.location.href='erezapf-admin.html'">
     <span class="ni">🔙</span> למנהל
   </div>
   <div class="nav-bottom">
     <div class="nav-exit" onclick="switchUser()" style="margin-bottom:0.5rem;">
       <span>🔄</span> החלף תלמיד
     </div>
-    <div id="nav-back-admin" class="nav-exit" style="display:none; margin-bottom:0.5rem;" onclick="history.back()">
+    <div id="nav-back-admin" class="nav-exit" style="display:none; margin-bottom:0.5rem;" onclick="localStorage.removeItem('fromAdmin'); window.location.href='erezapf-admin.html'">
       <span>🔙</span> חזרה למנהל
     </div>
     <div class="nav-exit" onclick="confirmExit()">
