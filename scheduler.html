@@ -338,19 +338,19 @@
     .view { display: none; }
     .view.active { display: block; }
 
-    #nav-back-admin-mobile { display: none !important; }
+    #nav-back-mobile { display: none !important; }
 
     /* ===== mobile ===== */
     @media (max-width: 600px) {
-      .nav { width: 100%; height: auto; flex-direction: row; position: fixed; bottom: 0; top: auto; right: 0; padding: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.15); }
+      .nav { width: 100%; height: auto; flex-direction: row; position: fixed; bottom: 0; top: auto; right: 0; padding: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.15); overflow-x: auto; }
       .nav-logo { display: none; }
       .nav-bottom { display: none !important; }
-      .nav-item { flex-direction: column; flex: 1; font-size: 0.65rem; padding: 0.5rem 0.3rem; gap: 0.2rem; border-right: none; border-top: 3px solid transparent; }
+      .nav-item { flex-direction: column; flex: 0 0 auto; min-width: 70px; font-size: 0.65rem; padding: 0.5rem 0.3rem; gap: 0.2rem; border-right: none; border-top: 3px solid transparent; }
       .nav-item.active { border-top-color: var(--gold); border-right-color: transparent; }
       .main { margin-right: 0; padding: 1rem; padding-bottom: 5rem; }
       .form-row { grid-template-columns: 1fr; }
-      #nav-back-admin-mobile { display: none; }
-      #nav-back-admin-mobile.show { display: flex !important; }
+      #nav-back-mobile { display: flex !important; }
+      #nav-back-mobile.hidden { display: none !important; }
     }
   </style>
 </head>
@@ -365,7 +365,7 @@
   <div class="nav-item" onclick="showView('my')" id="nav-my">
     <span class="ni">📋</span> השיעורים שלי
   </div>
-  <div class="nav-item" id="nav-back-admin-mobile" style="display:none;" onclick="localStorage.removeItem('fromAdmin'); window.location.href='erezapf-admin.html'">
+  <div class="nav-item" id="nav-back-mobile" style="display:none;" onclick="localStorage.removeItem('fromAdmin'); window.location.href='erezapf-admin.html'">
     <span class="ni">🔙</span> למנהל
   </div>
   <div class="nav-bottom">
@@ -1226,11 +1226,9 @@
 
   /* ===== אתחול ===== */
   if (localStorage.getItem('fromAdmin') === '1') {
-    /* דסקטופ — כפתור בתפריט צדדי */
     document.getElementById('nav-back-admin').style.display = 'flex';
-    /* מובייל — כפתור בתפריט תחתון (CSS מסתיר בדסקטופ) */
-    const mob = document.getElementById('nav-back-admin-mobile');
-    mob.style.setProperty('display', 'flex', 'important');
+  } else {
+    document.getElementById('nav-back-mobile').classList.add('hidden');
   }
 
   cleanExpiredLessons().then(loadSchedule);
