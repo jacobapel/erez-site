@@ -311,6 +311,9 @@
       .nav-item.active { border-top-color: var(--gold); border-right-color: transparent; }
       .main { margin-right: 0; padding: 1rem; padding-bottom: 5rem; }
     }
+    @media (min-width: 601px) {
+      .nav-item-mobile-only { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -334,11 +337,13 @@
     <div class="nav-item active" onclick="showView('requests')"  id="nav-requests"> <span class="ni">📋</span> בקשות</div>
     <div class="nav-item" onclick="showView('weekly')"    id="nav-weekly">   <span class="ni">📅</span> לוח שבועי</div>
     <div class="nav-item" onclick="showView('schedule')"  id="nav-schedule"> <span class="ni">⚙️</span> עריכת לוח</div>
-    <div class="nav-item" onclick="showView('completed')" id="nav-completed"><span class="ni">🎓</span> שיעורים שהתקיימו</div>
+    <div class="nav-item" onclick="showView('completed')" id="nav-completed"><span class="ni">🎓</span> שהתקיימו</div>
     <div class="nav-item" onclick="showView('students')"  id="nav-students"> <span class="ni">👨‍🎓</span> תלמידים</div>
-    <div class="nav-item" onclick="showView('history')"   id="nav-history">  <span class="ni">🕐</span> לוג פעולות</div>
+    <div class="nav-item" onclick="showView('history')"   id="nav-history">  <span class="ni">🕐</span> לוג</div>
+    <div class="nav-item nav-item-mobile-only" onclick="localStorage.setItem('fromAdmin','1'); window.location.href='scheduler.html'"><span class="ni">📱</span> דף תלמיד</div>
+    <div class="nav-item nav-item-mobile-only" onclick="doLogout()"><span class="ni">🚪</span> יציאה</div>
     <div class="nav-bottom">
-      <div class="nav-exit" onclick="localStorage.setItem('fromAdmin','1'); window.open('scheduler.html','_blank')"><span>👨‍🎓</span> דף תלמיד</div>
+      <div class="nav-exit" onclick="localStorage.setItem('fromAdmin','1'); window.location.href='scheduler.html'"><span>👨‍🎓</span> דף תלמיד</div>
       <div class="nav-exit" onclick="doLogout()"><span>🚪</span> יציאה</div>
     </div>
   </nav>
