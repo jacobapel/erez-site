@@ -899,7 +899,13 @@
       valid = false;
     }
     if (selectedSlots.size === 0) { showAlert('נא לבחור לפחות זמן אחד', 'error'); return; }
-    if (!valid) return;
+    if (!valid) {
+      /* גלול לראש הדף כדי שהתלמיד יראה את השגיאות */
+      document.querySelector('.main').scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      showAlert('יש לתקן את הפרטים המסומנים באדום', 'error');
+      return;
+    }
 
     /* בדיקת מכסה — מקסימום 3 שיעורים עתידיים (מאושרים + ממתינים בלבד, לא נדחים) */
     const cleanPhone = parsePhone(phone);
