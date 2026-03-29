@@ -391,23 +391,23 @@
       <div class="card-title">פרטים אישיים</div>
       <div class="form-row">
         <div class="form-group">
-          <label>שם מלא *</label>
+          <label>שם מלא <span style="color:var(--red);">*</span></label>
           <input type="text" id="s-name" placeholder="ישראל ישראלי" onblur="saveStudentData()" />
           <div class="field-error" id="err-name"></div>
         </div>
         <div class="form-group">
-          <label>טלפון *</label>
+          <label>טלפון <span style="color:var(--red);">*</span></label>
           <input type="tel" id="s-phone" placeholder="05X-XXXXXXX" maxlength="11" oninput="onPhoneInput(this)" onkeydown="onPhoneKeydown(event,this)" />
           <div class="field-error" id="err-phone"></div>
         </div>
       </div>
       <div class="form-group">
-        <label>אימייל *</label>
+        <label>אימייל <span style="color:var(--red);">*</span></label>
         <input type="email" id="s-email" placeholder="example@gmail.com" onblur="saveStudentData()" />
         <div class="field-error" id="err-email"></div>
       </div>
       <div class="form-group">
-        <label>יישוב *</label>
+        <label>יישוב <span style="color:var(--red);">*</span></label>
         <input type="text" id="s-city" placeholder="תל אביב, חיפה..." onblur="saveStudentData()" />
         <div class="field-error" id="err-city"></div>
       </div>
