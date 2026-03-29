@@ -407,14 +407,15 @@
         <div class="field-error" id="err-email"></div>
       </div>
       <div class="form-group">
-        <label>יישוב</label>
+        <label>יישוב *</label>
         <input type="text" id="s-city" placeholder="תל אביב, חיפה..." onblur="saveStudentData()" />
+        <div class="field-error" id="err-city"></div>
       </div>
+      <p style="font-size:0.73rem; color:var(--muted); margin-top:0.4rem;">* חובה למלא</p>
     </div>
 
     <div class="card">
       <div class="card-title">בחר שבוע</div>
-      <div class="week-selector" id="week-selector"></div>
       <div class="schedule-grid" id="student-schedule">
         <div class="spinner">טוען זמנים...</div>
       </div>
@@ -885,9 +886,11 @@
     document.getElementById('err-name').textContent  = '';
     document.getElementById('err-phone').textContent = '';
     document.getElementById('err-email').textContent = '';
+    document.getElementById('err-city').textContent  = '';
     document.getElementById('s-name').classList.remove('error');
     document.getElementById('s-phone').classList.remove('error');
     document.getElementById('s-email').classList.remove('error');
+    document.getElementById('s-city').classList.remove('error');
 
     if (!name) {
       document.getElementById('err-name').textContent = 'שדה חובה';
@@ -906,6 +909,11 @@
     } else if (!validateEmail(email)) {
       document.getElementById('err-email').textContent = 'כתובת אימייל לא תקינה';
       document.getElementById('s-email').classList.add('error');
+      valid = false;
+    }
+    if (!city) {
+      document.getElementById('err-city').textContent = 'שדה חובה';
+      document.getElementById('s-city').classList.add('error');
       valid = false;
     }
     if (selectedSlots.size === 0) { showAlert('נא לבחור לפחות זמן אחד', 'error'); return; }
@@ -961,6 +969,7 @@
     document.getElementById('s-phone').value = '';
     document.getElementById('s-email').value = '';
     document.getElementById('s-city').value  = '';
+    document.getElementById('err-city').textContent = '';
     document.getElementById('success-dialog').classList.add('show');
     await loadRequests();
     renderStudentSchedule();
