@@ -439,9 +439,15 @@
           <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.25rem;">אימייל</label>
           <input type="email" id="st-email" placeholder="example@gmail.com" style="width:100%; padding:0.6rem 0.8rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-family:inherit; font-size:0.88rem; background:var(--cream);" />
         </div>
-        <div style="margin-bottom:0.7rem;">
-          <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.25rem;">הערות</label>
-          <input type="text" id="st-notes" placeholder="הערות אישיות..." style="width:100%; padding:0.6rem 0.8rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-family:inherit; font-size:0.88rem; background:var(--cream);" />
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.7rem; margin-bottom:0.7rem;">
+          <div>
+            <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.25rem;">יישוב</label>
+            <input type="text" id="st-city" placeholder="תל אביב, חיפה..." style="width:100%; padding:0.6rem 0.8rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-family:inherit; font-size:0.88rem; background:var(--cream);" />
+          </div>
+          <div>
+            <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.25rem;">הערות</label>
+            <input type="text" id="st-notes" placeholder="הערות אישיות..." style="width:100%; padding:0.6rem 0.8rem; border:0.5px solid rgba(0,0,0,0.18); border-radius:8px; font-family:inherit; font-size:0.88rem; background:var(--cream);" />
+          </div>
         </div>
         <div id="st-error" style="font-size:0.78rem; color:var(--red); margin-bottom:0.6rem; min-height:1.2em;"></div>
         <div style="display:flex; gap:0.6rem;">
@@ -751,7 +757,7 @@
           </div>
           <span style="font-size:0.72rem; color:var(--muted);">${new Date(r.timestamp).toLocaleDateString('he-IL')} ${new Date(r.timestamp).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'})}</span>
         </div>
-        <div class="req-detail">📱 ${r.phone}${r.email ? ' | ✉️ ' + r.email : ''}</div>
+        <div class="req-detail">📱 ${r.phone}${r.email ? ' | ✉️ ' + r.email : ''}${r.city ? ' | 📍 ' + r.city : ''}</div>
         <div style="margin-top:0.4rem; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
           <span style="background:var(--gold-bg);color:#7a5a10;border-radius:12px;padding:2px 8px;font-size:0.75rem;">🕐 ${slotText}</span>
           ${!isPending && r.amount ? `<span style="background:var(--green-bg);color:var(--green);border-radius:12px;padding:2px 8px;font-size:0.75rem;">💰 ${r.amount} ₪</span>` : ''}
@@ -1257,7 +1263,7 @@
     studentsData = [];
     if (snap.exists()) {
       Object.entries(snap.val()).forEach(([phone, s]) => {
-        studentsData.push({ phone, name: s.name||'', email: s.email||'', notes: s.notes||'', updatedAt: s.updatedAt||0 });
+        studentsData.push({ phone, name: s.name||'', email: s.email||'', city: s.city||'', notes: s.notes||'', updatedAt: s.updatedAt||0 });
       });
     }
     renderStudents();
@@ -1269,7 +1275,8 @@
 
     let data = studentsData.filter(s =>
       !search || s.name.toLowerCase().includes(search) ||
-      s.phone.includes(search) || s.email.toLowerCase().includes(search)
+      s.phone.includes(search) || s.email.toLowerCase().includes(search) ||
+      s.city.toLowerCase().includes(search)
     );
 
     data.sort((a,b) => {
@@ -1291,6 +1298,7 @@
         </div>
         <div class="req-detail">📱 ${s.phone.slice(0,3)+'-'+s.phone.slice(3)}</div>
         ${s.email ? `<div class="req-detail">✉️ ${s.email}</div>` : ''}
+        ${s.city  ? `<div class="req-detail">📍 ${s.city}</div>`  : ''}
         ${s.notes ? `<div class="req-detail">📝 ${s.notes}</div>` : ''}
         <div class="req-actions">
           <button class="btn btn-outline btn-sm" onclick="editStudent('${s.phone}')">✏️ עריכה</button>
@@ -1307,6 +1315,7 @@
     const name  = document.getElementById('st-name').value.trim();
     const phone = document.getElementById('st-phone').value.trim().replace(/[-\s]/g,'');
     const email = document.getElementById('st-email').value.trim();
+    const city  = document.getElementById('st-city').value.trim();
     const notes = document.getElementById('st-notes').value.trim();
     const errEl = document.getElementById('st-error');
     errEl.textContent = '';
@@ -1314,7 +1323,7 @@
     if (!name)  { errEl.textContent = 'שם חובה'; return; }
     if (!/^05\d{8}$/.test(phone)) { errEl.textContent = 'טלפון לא תקין — נדרש: 05X-XXXXXXX'; return; }
 
-    await set(ref(db, 'students/' + phone), { name, email, notes, updatedAt: Date.now() });
+    await set(ref(db, 'students/' + phone), { name, email, city, notes, updatedAt: Date.now() });
     showAlert('התלמיד נשמר ✅', 'success');
     clearStudentForm();
     loadStudents();
@@ -1326,6 +1335,7 @@
     document.getElementById('st-name').value  = s.name;
     document.getElementById('st-phone').value = s.phone.slice(0,3)+'-'+s.phone.slice(3);
     document.getElementById('st-email').value = s.email;
+    document.getElementById('st-city').value  = s.city;
     document.getElementById('st-notes').value = s.notes;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -1341,6 +1351,7 @@
     document.getElementById('st-name').value  = '';
     document.getElementById('st-phone').value = '';
     document.getElementById('st-email').value = '';
+    document.getElementById('st-city').value  = '';
     document.getElementById('st-notes').value = '';
     document.getElementById('st-error').textContent = '';
   };
