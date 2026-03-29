@@ -338,7 +338,7 @@
     <div class="nav-item" onclick="showView('students')"  id="nav-students"> <span class="ni">👨‍🎓</span> תלמידים</div>
     <div class="nav-item" onclick="showView('history')"   id="nav-history">  <span class="ni">🕐</span> לוג פעולות</div>
     <div class="nav-bottom">
-      <div class="nav-exit" onclick="window.location.href='scheduler.html'"><span>👨‍🎓</span> דף תלמיד</div>
+      <div class="nav-exit" onclick="localStorage.setItem('fromAdmin','1'); window.location.href='scheduler.html'"><span>👨‍🎓</span> דף תלמיד</div>
       <div class="nav-exit" onclick="doLogout()"><span>🚪</span> יציאה</div>
     </div>
   </nav>

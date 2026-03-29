@@ -691,7 +691,7 @@
   }
 
   /* שמירת נתוני תלמיד ב-Firebase */
-  async function saveStudentData() {
+  window.saveStudentData = async function() {
     const phone = parsePhone(document.getElementById('s-phone').value.trim());
     if (!phone || phone.length < 10) return;
     const name  = document.getElementById('s-name').value.trim();
@@ -1223,7 +1223,7 @@
   window.sortHistory = function(dir) { historySortDir = dir; renderHistory(); };
 
   /* ===== אתחול ===== */
-  if (sessionStorage.getItem('fromAdmin') === '1') {
+  if (localStorage.getItem('fromAdmin') === '1') {
     document.getElementById('nav-back-admin').style.display        = 'flex';
     document.getElementById('nav-back-admin-mobile').style.display = 'flex';
   }
