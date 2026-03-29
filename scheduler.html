@@ -397,7 +397,7 @@
         </div>
         <div class="form-group">
           <label>טלפון *</label>
-          <input type="tel" id="s-phone" placeholder="05X-XXXXXXX" maxlength="11" oninput="onPhoneInput(this.value)" />
+          <input type="tel" id="s-phone" placeholder="05X-XXXXXXX" maxlength="11" oninput="onPhoneInput(this)" onkeydown="onPhoneKeydown(event,this)" />
           <div class="field-error" id="err-phone"></div>
         </div>
       </div>
@@ -618,13 +618,35 @@
     document.getElementById('history-list').innerHTML    = '';
   }
 
-  /* מופעל בכל הקשה בשדה טלפון */
-  window.onPhoneInput = function(val) {
-    const clean = parsePhone(val);
-    /* מילוי אוטומטי מיד לאחר הקלדת 10 ספרות */
-    if (clean.length === 10) {
-      autoFillFromPhone(val);
+  /* מיסכה אוטומטית לטלפון */
+  window.onPhoneInput = function(el) {
+    let val = el.value.replace(/\D/g, ''); // רק ספרות
+    const err = document.getElementById('err-phone');
+
+    // הגבל ל-10 ספרות
+    if (val.length > 10) val = val.slice(0, 10);
+
+    // הוסף מקף אחרי 3 ספרות
+    if (val.length > 3) {
+      el.value = val.slice(0,3) + '-' + val.slice(3);
+    } else {
+      el.value = val;
     }
+
+    // הודעת שגיאה מיידית אם הספרה השנייה אינה 5
+    if (val.length >= 2 && val[1] !== '5') {
+      err.textContent = 'מספר חייב להתחיל ב-05X';
+    } else if (val.length === 10) {
+      err.textContent = '';
+      autoFillFromPhone(el.value);
+    } else {
+      err.textContent = '';
+    }
+  };
+
+  window.onPhoneKeydown = function(e, el) {
+    // מנע הקלדת תווים לא מספריים (פרט ל-Backspace, Delete, Tab, חצים)
+    if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
   };
 
   /* ===== מילוי אוטומטי שם ואימייל לפי טלפון מ-Firebase ===== */
