@@ -338,6 +338,8 @@
     .view { display: none; }
     .view.active { display: block; }
 
+    #nav-back-admin-mobile { display: none !important; }
+
     /* ===== mobile ===== */
     @media (max-width: 600px) {
       .nav { width: 100%; height: auto; flex-direction: row; position: fixed; bottom: 0; top: auto; right: 0; padding: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.15); }
@@ -1224,8 +1226,11 @@
 
   /* ===== אתחול ===== */
   if (localStorage.getItem('fromAdmin') === '1') {
-    document.getElementById('nav-back-admin').style.display        = 'flex';
-    document.getElementById('nav-back-admin-mobile').style.display = 'flex';
+    /* דסקטופ — כפתור בתפריט צדדי */
+    document.getElementById('nav-back-admin').style.display = 'flex';
+    /* מובייל — כפתור בתפריט תחתון (CSS מסתיר בדסקטופ) */
+    const mob = document.getElementById('nav-back-admin-mobile');
+    mob.style.setProperty('display', 'flex', 'important');
   }
 
   cleanExpiredLessons().then(loadSchedule);
