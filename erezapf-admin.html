@@ -939,7 +939,7 @@
           (r.slots||[]).forEach(s => {
             const parts = s.split('_');
             if (parts[0] === day && parts[1] === dateStr) {
-              lessons.push({ name: r.name, time: parts[2] });
+              lessons.push({ name: r.name, city: r.city||'', time: parts[2] });
             }
           });
         }
@@ -952,7 +952,7 @@
       tr.innerHTML = `
         <td>${day}</td>
         <td>${dateStr}</td>
-        <td>${lessons.length ? lessons.map(l => `<div class="lesson-cell">🕐 ${l.time} — ${l.name}</div>`).join('') : '<span style="color:var(--muted);font-size:0.75rem;">—</span>'}</td>`;
+        <td>${lessons.length ? lessons.map(l => `<div class="lesson-cell">🕐 ${l.time} — ${l.name}${l.city ? ' | 📍 '+l.city : ''}</div>`).join('') : '<span style="color:var(--muted);font-size:0.75rem;">—</span>'}</td>`;
       table.appendChild(tr);
     });
   }
@@ -1015,7 +1015,7 @@
     completedData = [];
     if (snap.exists()) {
       Object.entries(snap.val()).forEach(([id, r]) => {
-        (r.slots||[]).forEach(slot => completedData.push({ id, slot, name: r.name, phone: r.phone, email: r.email||'', status: r.status, archivedAt: r.archivedAt||r.timestamp||0 }));
+        (r.slots||[]).forEach(slot => completedData.push({ id, slot, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', status: r.status, archivedAt: r.archivedAt||r.timestamp||0 }));
       });
     }
     renderCompleted();
