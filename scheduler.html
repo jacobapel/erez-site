@@ -342,10 +342,11 @@
 
     /* ===== mobile ===== */
     @media (max-width: 600px) {
-      .nav { width: 100%; height: auto; flex-direction: row; position: fixed; bottom: 0; top: auto; right: 0; padding: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.15); overflow-x: auto; }
+      .nav { width: 100%; height: auto; flex-direction: row; position: fixed; bottom: 0; top: auto; right: 0; padding: 0; box-shadow: 0 -2px 12px rgba(0,0,0,0.15); }
       .nav-logo { display: none; }
       .nav-bottom { display: none !important; }
-      .nav-item { flex-direction: column; flex: 0 0 auto; min-width: 70px; font-size: 0.65rem; padding: 0.5rem 0.3rem; gap: 0.2rem; border-right: none; border-top: 3px solid transparent; }
+      .nav-item { flex-direction: column; flex: 1; font-size: 0.58rem; padding: 0.45rem 0.2rem; gap: 0.15rem; border-right: none; border-top: 3px solid transparent; min-width: 0; overflow: hidden; }
+      .nav-item .ni { font-size: 1.1rem; }
       .nav-item.active { border-top-color: var(--gold); border-right-color: transparent; }
       .main { margin-right: 0; padding: 1rem; padding-bottom: 5rem; }
       .form-row { grid-template-columns: 1fr; }
@@ -366,7 +367,7 @@
     <span class="ni">📋</span> השיעורים שלי
   </div>
   <div class="nav-item" id="nav-back-mobile" style="display:none;" onclick="localStorage.removeItem('fromAdmin'); window.location.href='erezapf-admin.html'">
-    <span class="ni">🔙</span> למנהל
+    <span class="ni">🔙</span> חזרה למנהל
   </div>
   <div class="nav-bottom">
     <div class="nav-exit" onclick="switchUser()" style="margin-bottom:0.5rem;">
