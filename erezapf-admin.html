@@ -334,10 +334,9 @@
 
   <nav class="nav">
     <div class="nav-logo">ארז <span>פאנל ניהול</span></div>
-    <div class="nav-item active" onclick="showView('requests')"  id="nav-requests"> <span class="ni">📋</span> בקשות</div>
+    <div class="nav-item active" onclick="showView('requests')"  id="nav-requests"> <span class="ni">📋</span> בקשות <span id="nav-expired-star" style="color:#ff6b6b; display:none;">✶</span></div>
     <div class="nav-item" onclick="showView('weekly')"    id="nav-weekly">   <span class="ni">📅</span> לוח שבועי</div>
     <div class="nav-item" onclick="showView('schedule')"  id="nav-schedule"> <span class="ni">⚙️</span> עריכת לוח</div>
-    <div class="nav-item" onclick="showView('completed')" id="nav-completed"><span class="ni">🎓</span> שהתקיימו</div>
     <div class="nav-item" onclick="showView('students')"  id="nav-students"> <span class="ni">👨‍🎓</span> תלמידים</div>
     <div class="nav-item" onclick="showView('history')"   id="nav-history">  <span class="ni">🕐</span> לוג</div>
     <div class="nav-item nav-item-mobile-only" onclick="localStorage.setItem('fromAdmin','1'); window.location.href='scheduler.html'"><span class="ni">📱</span> דף תלמיד</div>
@@ -386,10 +385,15 @@
         <div class="card-title">מאושרות</div>
         <div id="approved-list"><div class="spinner">טוען...</div></div>
       </div>
+
+      <div class="card">
+        <div class="card-title">בקשות שפג תקפן <span id="expired-star" style="color:var(--red); display:none;">✶</span></div>
+        <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">שיעורים מאושרים וממתינים שתאריכם עבר — ניתן למחוק לפי שיקול דעת</p>
+        <div id="expired-list"><div class="spinner">טוען...</div></div>
+      </div>
     </div>
 
     <!-- ===== לוח שבועי ===== -->
-    <div id="view-weekly" class="view">
       <div class="page-header"><h1>לוח שבועי</h1></div>
       <div class="card">
         <div class="week-nav">
@@ -481,23 +485,10 @@
       </div>
     </div>
 
-    <!-- ===== שיעורים שהתקיימו ===== -->
-    <div id="view-completed" class="view">
-      <div class="page-header"><h1>שיעורים שהתקיימו</h1></div>
-      <div class="card">
-        <input type="text" class="search-bar" id="comp-search" placeholder="חיפוש לפי שם, טלפון, תאריך..." oninput="renderCompleted()" />
-        <div style="display:flex; gap:6px; margin-bottom:0.8rem;">
-          <button class="btn btn-outline btn-sm" onclick="compSortDir='asc'; renderCompleted()">↑ עולה</button>
-          <button class="btn btn-outline btn-sm" onclick="compSortDir='desc'; renderCompleted()">↓ יורד</button>
-          <button class="btn btn-outline btn-sm" onclick="exportCompleted()">📥 ייצוא CSV</button>
-        </div>
-        <div id="completed-list"><div class="spinner">טוען...</div></div>
-      </div>
-    </div>
-
     <!-- ===== לוג פעולות ===== -->
     <div id="view-history" class="view">
       <div class="page-header"><h1>לוג פעולות</h1></div>
+      <p style="font-size:0.78rem; color:var(--muted); margin-bottom:1rem;">✶ כולל בקשות מאושרות וממתינות שפג תקפם</p>
 
       <!-- כפתורי ייצוא/ייבוא -->
       <div style="display:flex; gap:6px; margin-bottom:1rem; flex-wrap:wrap;">
@@ -728,16 +719,33 @@
     } catch { return new Date(0); }
   }
 
+  /* בדיקה אם slot פג תוקפו (לפני אתמול) */
+  function isExpired(slot) {
+    try {
+      const d = slotToDate(slot);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      return d < today;
+    } catch { return false; }
+  }
+
   /* ===== בקשות ===== */
   function renderRequests() {
     const search = (document.getElementById('req-search')?.value || '').toLowerCase();
     const entries = Object.entries(allRequests);
 
-    const pending  = entries.filter(([,r]) => r.status === 'pending');
-    const approved = entries.filter(([,r]) => r.status === 'approved');
+    /* מפריד בין פעילות לפגות תוקף */
+    const pending  = entries.filter(([,r]) => r.status === 'pending'  && (r.slots||[]).some(s => !isExpired(s)));
+    const approved = entries.filter(([,r]) => r.status === 'approved' && (r.slots||[]).some(s => !isExpired(s)));
+    const expired  = entries.filter(([,r]) => (r.status === 'pending' || r.status === 'approved') && (r.slots||[]).every(s => isExpired(s)));
+
+    /* כוכבית בתפריט אם יש פגות תוקף */
+    document.getElementById('expired-star').style.display    = expired.length ? 'inline' : 'none';
+    document.getElementById('nav-expired-star').style.display = expired.length ? 'inline' : 'none';
 
     renderRequestList('pending-list',  pending,  search, 'אין בקשות ממתינות');
     renderRequestList('approved-list', approved, search, 'אין שיעורים מאושרים');
+    renderExpiredList(expired, search);
   }
 
   function renderRequestList(containerId, entries, search, emptyText) {
@@ -835,6 +843,59 @@
 
   window.filterRequests = renderRequests;
   window.sortRequests = function(dir) { reqSortDir = dir; renderRequests(); };
+
+  function renderExpiredList(entries, search) {
+    const container = document.getElementById('expired-list');
+    container.innerHTML = '';
+
+    const slots = [];
+    entries.forEach(([id, r]) => {
+      (r.slots||[]).filter(s => isExpired(s)).forEach(slot => {
+        const parts = slot.split('_');
+        const slotText = (parts[0]||'') + ' ' + (parts[1]||'') + ' ' + (parts[2]||'');
+        if (!search || r.name?.toLowerCase().includes(search) || r.phone?.includes(search) || slotText.toLowerCase().includes(search)) {
+          slots.push({ id, slot, slotText, r });
+        }
+      });
+    });
+
+    if (!slots.length) { container.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">אין בקשות שפג תקפן</p>'; return; }
+
+    slots.forEach(({ id, slot, slotText, r }) => {
+      const div = document.createElement('div');
+      div.className = 'request-item';
+      div.style.opacity = '0.75';
+      div.innerHTML = `
+        <div class="req-header">
+          <div>
+            <span class="req-name">${r.name}</span>
+            <span class="badge badge-${r.status}">${r.status === 'pending' ? 'ממתין' : 'מאושר'}</span>
+          </div>
+          <span style="font-size:0.72rem; color:var(--red);">פג תוקף</span>
+        </div>
+        <div class="req-detail">📱 ${r.phone}${r.email ? ' | ✉️ ' + r.email : ''}${r.city ? ' | 📍 ' + r.city : ''}</div>
+        <div style="margin-top:0.4rem;">
+          <span style="background:#f0f0f0;color:var(--muted);border-radius:12px;padding:2px 8px;font-size:0.75rem;">🕐 ${slotText}</span>
+        </div>
+        <div class="req-actions">
+          <button class="btn btn-red" onclick="deleteExpiredSlot('${id}','${slot}')">🗑️ מחק</button>
+        </div>`;
+      container.appendChild(div);
+    });
+  }
+
+  window.deleteExpiredSlot = async function(id, slot) {
+    const snap = await get(ref(db, 'requests/' + id));
+    if (!snap.exists()) return;
+    const r = snap.val();
+    const remaining = (r.slots||[]).filter(s => s !== slot);
+    if (remaining.length === 0) {
+      await remove(ref(db, 'requests/' + id));
+    } else {
+      await update(ref(db, 'requests/' + id), { slots: remaining });
+    }
+    showAlert('הבקשה נמחקה', 'info');
+  };
 
   window.approveRequest = async function(id) {
     await update(ref(db, 'requests/' + id), { status: 'approved' });
@@ -1019,61 +1080,6 @@
     const val = parseInt(document.getElementById('extra-weeks').value) || 4;
     await set(ref(db, 'settings/extraWeeks'), val);
     showAlert('מספר השבועות עודכן ✅', 'success');
-  };
-
-  /* ===== שיעורים שהתקיימו ===== */
-  let completedData = [];
-  let compSortDir   = 'desc';
-
-  async function loadCompleted() {
-    const snap = await get(ref(db, 'completed'));
-    completedData = [];
-    if (snap.exists()) {
-      Object.entries(snap.val()).forEach(([id, r]) => {
-        (r.slots||[]).forEach(slot => completedData.push({ id, slot, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', status: r.status, archivedAt: r.archivedAt||r.timestamp||0 }));
-      });
-    }
-    renderCompleted();
-  }
-
-  window.renderCompleted = function() {
-    const list   = document.getElementById('completed-list');
-    const search = (document.getElementById('comp-search')?.value || '').toLowerCase();
-
-    let data = completedData.filter(l =>
-      !search || l.name.toLowerCase().includes(search) || l.phone.includes(search) || l.slot.toLowerCase().includes(search)
-    );
-
-    data.sort((a,b) => {
-      const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
-      return compSortDir === 'asc' ? da - db2 : db2 - da;
-    });
-
-    list.innerHTML = '';
-    if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">אין שיעורים</p>'; return; }
-
-    data.forEach(l => {
-      const parts = l.slot.split('_');
-      const div = document.createElement('div');
-      div.className = 'request-item';
-      div.innerHTML = `
-        <div class="req-header">
-          <span class="req-name">${l.name}</span>
-          <span class="badge badge-approved">🎓 הושלם</span>
-        </div>
-        <div class="req-detail">📱 ${(l.phone||'').slice(0,3)+'-'+(l.phone||'').slice(3)}${l.email ? ' | ✉️ ' + l.email : ''}${l.city ? ' | 📍 ' + l.city : ''}</div>
-        <div class="req-detail">🕐 ${parts[0]||''} ${parts[1]||''} ${parts[2]||''}</div>`;
-      list.appendChild(div);
-    });
-  };
-
-  window.exportCompleted = function() {
-    const rows = [['שם','טלפון','אימייל','יישוב','יום','תאריך','שעה','סטטוס']];
-    completedData.forEach(l => {
-      const parts = l.slot.split('_');
-      rows.push([l.name, l.phone, l.email, l.city||'', parts[0]||'', parts[1]||'', parts[2]||'', l.status]);
-    });
-    downloadCSV(rows, 'completed_lessons.csv');
   };
 
   /* ===== ייצוא / ייבוא לוג ===== */
