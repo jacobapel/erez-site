@@ -558,6 +558,25 @@
   </div>
 </div>
 
+<!-- דיאלוג שינוי שיעור -->
+<div class="dialog-overlay" id="reschedule-dialog">
+  <div class="dialog" style="max-width:400px;">
+    <h3>✏️ שינוי מועד שיעור</h3>
+    <p id="reschedule-info" style="font-size:0.82rem; color:var(--muted); margin-bottom:1rem;"></p>
+    <div style="margin-bottom:0.8rem;">
+      <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.3rem;">בחר שבוע</label>
+      <div id="reschedule-weeks" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:0.8rem;"></div>
+      <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.3rem;">בחר זמן</label>
+      <div id="reschedule-slots" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+    </div>
+    <div id="reschedule-selected" style="font-size:0.82rem; color:var(--green); min-height:1.4em; margin-bottom:0.8rem;"></div>
+    <div class="dialog-btns">
+      <button class="btn btn-outline" onclick="closeDialog('reschedule-dialog')">ביטול</button>
+      <button class="btn btn-navy" onclick="confirmReschedule()">אשר שינוי</button>
+    </div>
+  </div>
+</div>
+
 <!-- Firebase + EmailJS -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
@@ -988,8 +1007,98 @@
     cancelTargetSlot = null;
   };
 
+  /* ===== שינוי מועד שיעור ===== */
+  let rescheduleTargetId   = null;
+  let rescheduleTargetSlot = null;
+  let rescheduleNewSlot    = null;
+  let rescheduleWeekOffset = 0;
+
+  window.startReschedule = async function(id, slot, name) {
+    rescheduleTargetId   = id;
+    rescheduleTargetSlot = slot;
+    rescheduleNewSlot    = null;
+    rescheduleWeekOffset = 0;
+    const parts = slot.split('_');
+    document.getElementById('reschedule-info').textContent =
+      `שינוי מועד עבור: ${name} | נוכחי: ${parts[0]} ${parts[1]} ${parts[2]}`;
+    document.getElementById('reschedule-selected').textContent = '';
+    renderRescheduleWeeks();
+    document.getElementById('reschedule-dialog').classList.add('show');
+  };
+
+  function renderRescheduleWeeks() {
+    const container = document.getElementById('reschedule-weeks');
+    container.innerHTML = '';
+    const extraW = parseInt(document.getElementById('extra-weeks')?.value || 4);
+    for (let i = 0; i <= extraW; i++) {
+      const ws = getWeekStart(i);
+      const we = new Date(ws); we.setDate(ws.getDate() + 6);
+      const btn = document.createElement('div');
+      btn.style.cssText = `padding:4px 10px; border-radius:20px; font-size:0.75rem; border:0.5px solid var(--border); background:${i===rescheduleWeekOffset?'var(--navy)':'var(--white)'}; color:${i===rescheduleWeekOffset?'#fff':'var(--navy)'}; cursor:pointer;`;
+      btn.textContent = formatDate(ws) + '—' + formatDate(we);
+      btn.onclick = () => { rescheduleWeekOffset = i; renderRescheduleWeeks(); renderRescheduleSlots(); };
+      container.appendChild(btn);
+    }
+    renderRescheduleSlots();
+  }
+
+  function renderRescheduleSlots() {
+    const container = document.getElementById('reschedule-slots');
+    container.innerHTML = '';
+    if (!schedule.length) { container.innerHTML = '<p style="font-size:0.8rem;color:var(--muted)">אין לוח זמנים</p>'; return; }
+    const ws  = getWeekStart(rescheduleWeekOffset);
+    const now = new Date();
+    const taken = new Set();
+    Object.values(allRequests).forEach(r => {
+      (r.slots||[]).forEach(s => {
+        if (r.status === 'approved' || r.status === 'pending') taken.add(s);
+      });
+    });
+    schedule.forEach(dayObj => {
+      const dayIndex = DAYS_HE.indexOf(dayObj.day);
+      if (dayIndex < 0) return;
+      const dayDate = new Date(ws); dayDate.setDate(ws.getDate() + dayIndex);
+      if (dayDate < now) return;
+      (dayObj.times||[]).forEach(t => {
+        const key = dayObj.day + '_' + formatDate(dayDate) + '_' + t;
+        if (key === rescheduleTargetSlot) return;
+        const isTaken    = taken.has(key);
+        const isSelected = key === rescheduleNewSlot;
+        const btn = document.createElement('div');
+        btn.style.cssText = `padding:4px 11px; border-radius:20px; font-size:0.78rem; cursor:${isTaken?'not-allowed':'pointer'}; border:0.5px solid ${isSelected?'var(--gold)':isTaken?'#e0e0e0':'rgba(26,39,68,0.2)'}; background:${isSelected?'rgba(201,149,42,0.2)':isTaken?'#f0f0f0':'var(--white)'}; color:${isTaken?'#bbb':'var(--navy)'}; ${isTaken?'text-decoration:line-through;':''}`;
+        btn.textContent = dayObj.day + ' ' + formatDate(dayDate) + ' ' + t;
+        if (!isTaken) btn.onclick = () => {
+          rescheduleNewSlot = key;
+          document.getElementById('reschedule-selected').textContent = '✅ נבחר: ' + btn.textContent;
+          renderRescheduleSlots();
+        };
+        container.appendChild(btn);
+      });
+    });
+  }
+
+  window.confirmReschedule = async function() {
+    if (!rescheduleTargetId || !rescheduleNewSlot) { showAlert('יש לבחור מועד חדש', 'error'); return; }
+    const snap = await get(ref(db, 'requests/' + rescheduleTargetId));
+    if (!snap.exists()) return;
+    const r = snap.val();
+    await remove(ref(db, 'requests/' + rescheduleTargetId));
+    const newRef = push(ref(db, 'requests'));
+    await set(newRef, { ...r, slots: [rescheduleNewSlot] });
+    await logAction({
+      reqId: newRef.key, name: r.name, phone: r.phone,
+      email: r.email||'', city: r.city||'',
+      slot: rescheduleNewSlot,
+      action: 'שונה',
+      status: `שונה מ: ${rescheduleTargetSlot} → ${rescheduleNewSlot}`,
+      by: 'מנהל', amount: r.amount||0
+    });
+    closeDialog('reschedule-dialog');
+    showAlert('מועד השיעור שונה ✅', 'success');
+    rescheduleTargetId = rescheduleTargetSlot = rescheduleNewSlot = null;
+  };
+
   /* ===== לוח שבועי ===== */
-  let weeklyOffset = 0;
 
   window.changeWeekView = function(dir) { weeklyOffset += dir; renderWeeklyTable(); };
 
@@ -1011,12 +1120,12 @@
       const dateStr = formatDate(dayDate);
 
       const lessons = [];
-      Object.values(allRequests).forEach(r => {
+      Object.entries(allRequests).forEach(([id, r]) => {
         if (r.status === 'approved') {
           (r.slots||[]).forEach(s => {
             const parts = s.split('_');
             if (parts[0] === day && parts[1] === dateStr) {
-              lessons.push({ name: r.name, city: r.city||'', time: parts[2] });
+              lessons.push({ id, slot: s, name: r.name, city: r.city||'', time: parts[2], amount: r.amount||0, r });
             }
           });
         }
@@ -1029,7 +1138,13 @@
       tr.innerHTML = `
         <td>${day}</td>
         <td>${dateStr}</td>
-        <td>${lessons.length ? lessons.map(l => `<div class="lesson-cell">🕐 ${l.time} — ${l.name}${l.city ? ' | 📍 '+l.city : ''}</div>`).join('') : '<span style="color:var(--muted);font-size:0.75rem;">—</span>'}</td>`;
+        <td>${lessons.length ? lessons.map(l =>
+          `<div class="lesson-cell" style="cursor:pointer; padding:3px 6px; border-radius:6px; transition:background 0.15s;"
+            onmouseover="this.style.background='rgba(201,149,42,0.15)'"
+            onmouseout="this.style.background=''"
+            onclick="startReschedule('${l.id}','${l.slot}','${l.name}')">
+            ✏️ ${l.time} — ${l.name}${l.city ? ' | 📍 '+l.city : ''}
+          </div>`).join('') : '<span style="color:var(--muted);font-size:0.75rem;">—</span>'}</td>`;
       table.appendChild(tr);
     });
   }
