@@ -356,24 +356,11 @@
       <div class="page-header">
         <h1>בקשות לאישור</h1>
       </div>
-      <input type="text" class="search-bar" id="req-search" placeholder="חיפוש לפי שם, טלפון, תאריך..." oninput="filterRequests()" />
-      <div style="display:flex; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;">
-        <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
-        <select id="req-sort-field" onchange="reqSortField=this.value; renderRequests()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
-          <option value="date">תאריך שיעור</option>
-          <option value="submit">תאריך בקשה</option>
-          <option value="name">שם</option>
-          <option value="amount">סכום</option>
-        </select>
-        <span style="font-size:0.78rem; color:var(--muted);">ואז:</span>
-        <select id="req-sort-field2" onchange="reqSortField2=this.value; renderRequests()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
-          <option value="name">שם</option>
-          <option value="date">תאריך שיעור</option>
-          <option value="submit">תאריך בקשה</option>
-          <option value="amount">סכום</option>
-        </select>
-        <button class="btn btn-outline btn-sm" onclick="reqSortDir='asc'; renderRequests()">↑ עולה</button>
-        <button class="btn btn-outline btn-sm" onclick="reqSortDir='desc'; renderRequests()">↓ יורד</button>
+      <input type="text" class="search-bar" id="req-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, תאריך, סכום..." oninput="filterRequests()" />
+      <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
+        <span style="font-size:0.78rem; color:var(--muted);">מיון לפי תאריך שיעור:</span>
+        <button class="btn btn-outline btn-sm" id="sort-asc-btn"  onclick="reqSortDir='asc';  updateSortBtns(); renderRequests()" style="background:var(--navy);color:#fff;">↑ עולה</button>
+        <button class="btn btn-outline btn-sm" id="sort-desc-btn" onclick="reqSortDir='desc'; updateSortBtns(); renderRequests()">↓ יורד</button>
       </div>
 
       <div class="card">
@@ -778,7 +765,7 @@
       (r.slots||[]).forEach(slot => {
         const parts = slot.split('_');
         const slotText = (parts[0]||'') + ' ' + (parts[1]||'') + ' ' + (parts[2]||'');
-        if (!search || r.name?.toLowerCase().includes(search) || r.phone?.includes(search) || slotText.toLowerCase().includes(search)) {
+        if (matchesSearch(r, slot, search)) {
           slots.push({ id, slot, slotText, r });
         }
       });
@@ -833,32 +820,31 @@
   }
 
   /* ===== מיון בקשות ===== */
-  let reqSortField  = 'date';
-  let reqSortField2 = 'name';
+  let reqSortField = 'date';
+
+  window.updateSortBtns = function() {
+    document.getElementById('sort-asc-btn').style.background  = reqSortDir === 'asc'  ? 'var(--navy)' : '';
+    document.getElementById('sort-asc-btn').style.color       = reqSortDir === 'asc'  ? '#fff'        : '';
+    document.getElementById('sort-desc-btn').style.background = reqSortDir === 'desc' ? 'var(--navy)' : '';
+    document.getElementById('sort-desc-btn').style.color      = reqSortDir === 'desc' ? '#fff'        : '';
+  };
 
   function sortSlots(slots) {
-    const val = s => {
-      if (reqSortField === 'date')   return slotToDate(s.slot).getTime();
-      if (reqSortField === 'submit') return s.r.timestamp || 0;
-      if (reqSortField === 'name')   return s.r.name || '';
-      if (reqSortField === 'amount') return s.r.amount || 0;
-      return 0;
-    };
-    const val2 = s => {
-      if (reqSortField2 === 'date')   return slotToDate(s.slot).getTime();
-      if (reqSortField2 === 'submit') return s.r.timestamp || 0;
-      if (reqSortField2 === 'name')   return s.r.name || '';
-      if (reqSortField2 === 'amount') return s.r.amount || 0;
-      return 0;
-    };
     const dir = reqSortDir === 'asc' ? 1 : -1;
-    slots.sort((a,b) => {
-      const v1a = val(a), v1b = val(b);
-      if (v1a !== v1b) return typeof v1a === 'string' ? v1a.localeCompare(v1b,'he') * dir : (v1a - v1b) * dir;
-      const v2a = val2(a), v2b = val2(b);
-      return typeof v2a === 'string' ? v2a.localeCompare(v2b,'he') : v2a - v2b;
-    });
+    slots.sort((a,b) => (slotToDate(a.slot).getTime() - slotToDate(b.slot).getTime()) * dir);
     return slots;
+  }
+
+  function matchesSearch(r, slot, search) {
+    if (!search) return true;
+    const parts = (slot||'').split('_');
+    const slotText = parts.join(' ');
+    return (r.name||'').toLowerCase().includes(search) ||
+           (r.phone||'').includes(search) ||
+           (r.email||'').toLowerCase().includes(search) ||
+           (r.city||'').toLowerCase().includes(search) ||
+           slotText.toLowerCase().includes(search) ||
+           String(r.amount||'').includes(search);
   }
 
   window.filterRequests = renderRequests;
@@ -868,16 +854,18 @@
     const container = document.getElementById('expired-list');
     container.innerHTML = '';
 
-    const slots = [];
+    let slots = [];
     entries.forEach(([id, r]) => {
       (r.slots||[]).filter(s => isExpired(s)).forEach(slot => {
         const parts = slot.split('_');
         const slotText = (parts[0]||'') + ' ' + (parts[1]||'') + ' ' + (parts[2]||'');
-        if (!search || r.name?.toLowerCase().includes(search) || r.phone?.includes(search) || slotText.toLowerCase().includes(search)) {
+        if (matchesSearch(r, slot, search)) {
           slots.push({ id, slot, slotText, r });
         }
       });
     });
+
+    slots.sort((a,b) => slotToDate(a.slot).getTime() - slotToDate(b.slot).getTime());
 
     if (!slots.length) { container.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">אין בקשות שפג תקפן</p>'; return; }
 
