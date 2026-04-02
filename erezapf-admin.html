@@ -488,13 +488,14 @@
 
       <!-- כרונולוגי -->
       <div id="log-view-all">
-        <input type="text" class="search-bar" id="log-all-search" placeholder="חיפוש לפי שם, טלפון, שיעור, פעולה..." oninput="renderLogAll()" />
-        <div style="display:flex; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;">
-          <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
-          <select onchange="logAllSortDir=this.value; renderLogAll()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
-            <option value="desc">↓ יורד (חדש→ישן)</option>
-            <option value="asc">↑ עולה (ישן→חדש)</option>
-          </select>
+        <input type="text" class="search-bar" id="log-all-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, שיעור, פעולה, סטטוס..." oninput="renderLogAll()" />
+        <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center; flex-wrap:wrap;">
+          <span style="font-size:0.78rem; color:var(--muted);">מיון לפי תאריך:</span>
+          <button class="btn btn-outline btn-sm" id="log-asc-btn"  onclick="logAllSortDir='asc';  updateLogSortBtns('date'); renderLogAll()">↑ עולה</button>
+          <button class="btn btn-outline btn-sm" id="log-desc-btn" onclick="logAllSortDir='desc'; updateLogSortBtns('date'); renderLogAll()" style="background:var(--navy);color:#fff;">↓ יורד</button>
+          <span style="font-size:0.78rem; color:var(--muted); margin-right:6px;">לפי שם:</span>
+          <button class="btn btn-outline btn-sm" id="log-name-asc-btn"  onclick="logAllSortDir='name-asc';  updateLogSortBtns('name-asc');  renderLogAll()">↑ א-ת</button>
+          <button class="btn btn-outline btn-sm" id="log-name-desc-btn" onclick="logAllSortDir='name-desc'; updateLogSortBtns('name-desc'); renderLogAll()">↓ ת-א</button>
         </div>
         <div id="log-all-list"><div class="spinner">טוען...</div></div>
       </div>
@@ -1263,22 +1264,46 @@
     renderLogAll();
   }
 
+  window.updateLogSortBtns = function(active) {
+    const btns = {
+      'log-asc-btn':       active === 'asc',
+      'log-desc-btn':      active === 'desc' || active === 'date',
+      'log-name-asc-btn':  active === 'name-asc',
+      'log-name-desc-btn': active === 'name-desc',
+    };
+    Object.entries(btns).forEach(([id, on]) => {
+      const el = document.getElementById(id);
+      if (el) { el.style.background = on ? 'var(--navy)' : ''; el.style.color = on ? '#fff' : ''; }
+    });
+  };
+
   window.renderLogAll = function() {
     const list   = document.getElementById('log-all-list');
     const search = (document.getElementById('log-all-search')?.value || '').toLowerCase();
 
     let data = logAllData.filter(l =>
-      !search || (l.name||'').toLowerCase().includes(search) ||
-      (l.phone||'').includes(search) || (l.slot||'').toLowerCase().includes(search) ||
-      (l.action||'').includes(search) || (l.status||'').includes(search) ||
-      (l.by||'').includes(search)
+      !search ||
+      (l.name||'').toLowerCase().includes(search) ||
+      (l.phone||'').includes(search) ||
+      (l.email||'').toLowerCase().includes(search) ||
+      (l.city||'').toLowerCase().includes(search) ||
+      (l.slot||'').toLowerCase().includes(search) ||
+      (l.action||'').includes(search) ||
+      (l.status||'').includes(search) ||
+      (l.by||'').includes(search) ||
+      String(l.amount||'').includes(search)
     );
 
-    data.sort((a,b) => logAllSortDir === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
+    if (logAllSortDir === 'name-asc') {
+      data.sort((a,b) => (a.name||'').localeCompare(b.name||'', 'he'));
+    } else if (logAllSortDir === 'name-desc') {
+      data.sort((a,b) => (b.name||'').localeCompare(a.name||'', 'he'));
+    } else {
+      data.sort((a,b) => logAllSortDir === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp);
+    }
 
     list.innerHTML = '';
     if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">אין רשומות</p>'; return; }
-
     data.forEach(l => renderLogItem(list, l));
   };
 
