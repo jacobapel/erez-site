@@ -679,7 +679,7 @@
   /* ===== אתחול ===== */
   let schedule = [];
   let allRequests = {};
-  let reqSortDir = 'desc';
+  let reqSortDir = 'asc';
 
   const DEFAULT_SCHEDULE = [
     { day: 'ראשון',  times: ['15:00','16:00','17:00','18:00'] },
@@ -831,7 +831,7 @@
 
   function sortSlots(slots) {
     const dir = reqSortDir === 'asc' ? 1 : -1;
-    slots.sort((a,b) => (slotToDate(a.slot).getTime() - slotToDate(b.slot).getTime()) * dir);
+    slots.sort((a, b) => (slotToDate(a.slot).getTime() - slotToDate(b.slot).getTime()) * dir);
     return slots;
   }
 
@@ -865,7 +865,7 @@
       });
     });
 
-    slots.sort((a,b) => slotToDate(a.slot).getTime() - slotToDate(b.slot).getTime());
+    slots.sort((a, b) => slotToDate(a.slot).getTime() - slotToDate(b.slot).getTime());
 
     if (!slots.length) { container.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">אין בקשות שפג תקפן</p>'; return; }
 
