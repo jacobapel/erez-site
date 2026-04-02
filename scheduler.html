@@ -451,7 +451,10 @@
         <input type="tel" id="my-phone" placeholder="05X-XXXXXXX" style="flex:1;" maxlength="11" />
         <button class="btn btn-navy" onclick="loadMyLessons()">הצג</button>
       </div>
-      <input type="text" class="search-bar" id="my-search" placeholder="חיפוש..." oninput="filterMyLessons()" style="display:none;" />
+      <div id="my-search-row" style="display:none; gap:6px; margin-bottom:0.8rem; align-items:center;">
+        <input type="text" class="search-bar" id="my-search" placeholder="חיפוש..." oninput="filterMyLessons()" style="margin-bottom:0; flex:1;" />
+        <button class="btn btn-outline btn-sm" onclick="window.clearSearch('my-search', window.filterMyLessons)">נקה</button>
+      </div>
       <div id="my-lessons-list"></div>
     </div>
   </div>
@@ -960,7 +963,7 @@
       });
     }
 
-    document.getElementById('my-search').style.display = myLessonsData.length ? 'block' : 'none';
+    document.getElementById('my-search-row').style.display = myLessonsData.length ? 'flex' : 'none';
     renderMyLessons();
   };
 
@@ -1033,6 +1036,11 @@
       return date;
     } catch { return new Date(0); }
   }
+
+  window.clearSearch = function(id, callback) {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; if (callback) callback(); }
+  };
 
   window.filterMyLessons = renderMyLessons;
   window.sortMyLessons = function(dir) { myLessonsSortDir = dir; renderMyLessons(); };

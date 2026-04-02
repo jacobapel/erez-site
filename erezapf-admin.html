@@ -356,7 +356,10 @@
       <div class="page-header">
         <h1>בקשות לאישור</h1>
       </div>
-      <input type="text" class="search-bar" id="req-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, תאריך, סכום..." oninput="filterRequests()" />
+      <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
+        <input type="text" class="search-bar" id="req-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, תאריך, סכום..." oninput="filterRequests()" style="margin-bottom:0; flex:1;" />
+        <button class="btn btn-outline btn-sm" onclick="window.clearSearch('req-search', filterRequests)">נקה</button>
+      </div>
       <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
         <span style="font-size:0.78rem; color:var(--muted);">מיון לפי תאריך שיעור:</span>
         <button class="btn btn-outline btn-sm" id="sort-asc-btn"  onclick="window.setReqSort('asc')"  style="background:var(--navy);color:#fff;">↑ עולה</button>
@@ -456,7 +459,10 @@
       <!-- רשימת תלמידים -->
       <div class="card">
         <div class="card-title">רשימת תלמידים</div>
-        <input type="text" class="search-bar" id="st-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, הערות..." oninput="filterStudents()" />
+        <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
+          <input type="text" class="search-bar" id="st-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, הערות..." oninput="filterStudents()" style="margin-bottom:0; flex:1;" />
+          <button class="btn btn-outline btn-sm" onclick="window.clearSearch('st-search', filterStudents)">נקה</button>
+        </div>
         <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center; flex-wrap:wrap;">
           <span style="font-size:0.78rem; color:var(--muted);">מיון לפי שם:</span>
           <button class="btn btn-outline btn-sm" id="st-asc-btn"  onclick="window.setStudentSort('asc')"  style="background:var(--navy);color:#fff;">↑ עולה</button>
@@ -488,7 +494,10 @@
 
       <!-- כרונולוגי -->
       <div id="log-view-all">
-        <input type="text" class="search-bar" id="log-all-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, שיעור, פעולה, סטטוס..." oninput="renderLogAll()" />
+        <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
+          <input type="text" class="search-bar" id="log-all-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, שיעור, פעולה, סטטוס..." oninput="renderLogAll()" style="margin-bottom:0; flex:1;" />
+          <button class="btn btn-outline btn-sm" onclick="window.clearSearch('log-all-search', renderLogAll)">נקה</button>
+        </div>
         <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center; flex-wrap:wrap;">
           <span style="font-size:0.78rem; color:var(--muted);">מיון לפי תאריך:</span>
           <button class="btn btn-outline btn-sm" id="log-asc-btn"       onclick="window.setLogSort('asc')">↑ עולה</button>
@@ -840,6 +849,11 @@
            slotText.toLowerCase().includes(search) ||
            String(r.amount||'').includes(search);
   }
+
+  window.clearSearch = function(id, callback) {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; if (callback) callback(); }
+  };
 
   window.setReqSort = function(dir) {
     reqSortDir = dir;
