@@ -359,8 +359,8 @@
       <input type="text" class="search-bar" id="req-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, תאריך, סכום..." oninput="filterRequests()" />
       <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
         <span style="font-size:0.78rem; color:var(--muted);">מיון לפי תאריך שיעור:</span>
-        <button class="btn btn-outline btn-sm" id="sort-asc-btn"  onclick="reqSortDir='asc';  updateSortBtns(); renderRequests()" style="background:var(--navy);color:#fff;">↑ עולה</button>
-        <button class="btn btn-outline btn-sm" id="sort-desc-btn" onclick="reqSortDir='desc'; updateSortBtns(); renderRequests()">↓ יורד</button>
+        <button class="btn btn-outline btn-sm" id="sort-asc-btn"  onclick="window.setReqSort('asc')"  style="background:var(--navy);color:#fff;">↑ עולה</button>
+        <button class="btn btn-outline btn-sm" id="sort-desc-btn" onclick="window.setReqSort('desc')">↓ יורד</button>
       </div>
 
       <div class="card">
@@ -459,8 +459,8 @@
         <input type="text" class="search-bar" id="st-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, הערות..." oninput="filterStudents()" />
         <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center; flex-wrap:wrap;">
           <span style="font-size:0.78rem; color:var(--muted);">מיון לפי שם:</span>
-          <button class="btn btn-outline btn-sm" id="st-asc-btn"  onclick="studentsSortDir='asc';  updateStudentSortBtns(); renderStudents()" style="background:var(--navy);color:#fff;">↑ עולה</button>
-          <button class="btn btn-outline btn-sm" id="st-desc-btn" onclick="studentsSortDir='desc'; updateStudentSortBtns(); renderStudents()">↓ יורד</button>
+          <button class="btn btn-outline btn-sm" id="st-asc-btn"  onclick="window.setStudentSort('asc')"  style="background:var(--navy);color:#fff;">↑ עולה</button>
+          <button class="btn btn-outline btn-sm" id="st-desc-btn" onclick="window.setStudentSort('desc')">↓ יורד</button>
         </div>
         <div id="students-list"><div class="spinner">טוען...</div></div>
       </div>
@@ -491,11 +491,11 @@
         <input type="text" class="search-bar" id="log-all-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, שיעור, פעולה, סטטוס..." oninput="renderLogAll()" />
         <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center; flex-wrap:wrap;">
           <span style="font-size:0.78rem; color:var(--muted);">מיון לפי תאריך:</span>
-          <button class="btn btn-outline btn-sm" id="log-asc-btn"  onclick="logAllSortDir='asc';  updateLogSortBtns('date'); renderLogAll()">↑ עולה</button>
-          <button class="btn btn-outline btn-sm" id="log-desc-btn" onclick="logAllSortDir='desc'; updateLogSortBtns('date'); renderLogAll()" style="background:var(--navy);color:#fff;">↓ יורד</button>
+          <button class="btn btn-outline btn-sm" id="log-asc-btn"       onclick="window.setLogSort('asc')">↑ עולה</button>
+          <button class="btn btn-outline btn-sm" id="log-desc-btn"      onclick="window.setLogSort('desc')" style="background:var(--navy);color:#fff;">↓ יורד</button>
           <span style="font-size:0.78rem; color:var(--muted); margin-right:6px;">לפי שם:</span>
-          <button class="btn btn-outline btn-sm" id="log-name-asc-btn"  onclick="logAllSortDir='name-asc';  updateLogSortBtns('name-asc');  renderLogAll()">↑ א-ת</button>
-          <button class="btn btn-outline btn-sm" id="log-name-desc-btn" onclick="logAllSortDir='name-desc'; updateLogSortBtns('name-desc'); renderLogAll()">↓ ת-א</button>
+          <button class="btn btn-outline btn-sm" id="log-name-asc-btn"  onclick="window.setLogSort('name-asc')">↑ א-ת</button>
+          <button class="btn btn-outline btn-sm" id="log-name-desc-btn" onclick="window.setLogSort('name-desc')">↓ ת-א</button>
         </div>
         <div id="log-all-list"><div class="spinner">טוען...</div></div>
       </div>
@@ -840,6 +840,24 @@
            slotText.toLowerCase().includes(search) ||
            String(r.amount||'').includes(search);
   }
+
+  window.setReqSort = function(dir) {
+    reqSortDir = dir;
+    updateSortBtns();
+    renderRequests();
+  };
+
+  window.setLogSort = function(dir) {
+    logAllSortDir = dir;
+    updateLogSortBtns(dir);
+    renderLogAll();
+  };
+
+  window.setStudentSort = function(dir) {
+    studentsSortDir = dir;
+    updateStudentSortBtns();
+    renderStudents();
+  };
 
   window.filterRequests = renderRequests;
   window.sortRequests = function(dir) { reqSortDir = dir; renderRequests(); };
