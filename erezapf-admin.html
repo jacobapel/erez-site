@@ -358,7 +358,7 @@
       </div>
       <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
         <input type="text" class="search-bar" id="req-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, תאריך, סכום..." oninput="filterRequests()" style="margin-bottom:0; flex:1;" />
-        <button class="btn btn-outline btn-sm" onclick="window.clearSearch('req-search', filterRequests)">נקה</button>
+        <button class="btn btn-outline" onclick="window.clearSearch('req-search', filterRequests)">נקה</button>
       </div>
       <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
         <span style="font-size:0.78rem; color:var(--muted);">מיון לפי תאריך שיעור:</span>
@@ -461,7 +461,7 @@
         <div class="card-title">רשימת תלמידים</div>
         <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
           <input type="text" class="search-bar" id="st-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, הערות..." oninput="filterStudents()" style="margin-bottom:0; flex:1;" />
-          <button class="btn btn-outline btn-sm" onclick="window.clearSearch('st-search', filterStudents)">נקה</button>
+          <button class="btn btn-outline" onclick="window.clearSearch('st-search', filterStudents)">נקה</button>
         </div>
         <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center; flex-wrap:wrap;">
           <span style="font-size:0.78rem; color:var(--muted);">מיון לפי שם:</span>
@@ -496,7 +496,7 @@
       <div id="log-view-all">
         <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center;">
           <input type="text" class="search-bar" id="log-all-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, שיעור, פעולה, סטטוס..." oninput="renderLogAll()" style="margin-bottom:0; flex:1;" />
-          <button class="btn btn-outline btn-sm" onclick="window.clearSearch('log-all-search', renderLogAll)">נקה</button>
+          <button class="btn btn-outline" onclick="window.clearSearch('log-all-search', renderLogAll)">נקה</button>
         </div>
         <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center; flex-wrap:wrap;">
           <span style="font-size:0.78rem; color:var(--muted);">מיון לפי תאריך:</span>
