@@ -456,18 +456,11 @@
       <!-- רשימת תלמידים -->
       <div class="card">
         <div class="card-title">רשימת תלמידים</div>
-        <input type="text" class="search-bar" id="st-search" placeholder="חיפוש לפי שם, טלפון, אימייל..." oninput="filterStudents()" />
-        <div style="display:flex; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;">
-          <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
-          <select id="st-sort-field" onchange="studentsSortField=this.value; renderStudents()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
-            <option value="name">שם</option>
-            <option value="phone">טלפון</option>
-            <option value="date">תאריך הצטרפות</option>
-          </select>
-          <select id="st-sort-dir" onchange="studentsSortDir=this.value; renderStudents()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
-            <option value="asc">↑ עולה</option>
-            <option value="desc">↓ יורד</option>
-          </select>
+        <input type="text" class="search-bar" id="st-search" placeholder="חיפוש לפי שם, טלפון, אימייל, יישוב, הערות..." oninput="filterStudents()" />
+        <div style="display:flex; gap:6px; margin-bottom:0.8rem; align-items:center; flex-wrap:wrap;">
+          <span style="font-size:0.78rem; color:var(--muted);">מיון לפי שם:</span>
+          <button class="btn btn-outline btn-sm" id="st-asc-btn"  onclick="studentsSortDir='asc';  updateStudentSortBtns(); renderStudents()" style="background:var(--navy);color:#fff;">↑ עולה</button>
+          <button class="btn btn-outline btn-sm" id="st-desc-btn" onclick="studentsSortDir='desc'; updateStudentSortBtns(); renderStudents()">↓ יורד</button>
         </div>
         <div id="students-list"><div class="spinner">טוען...</div></div>
       </div>
@@ -1386,6 +1379,13 @@
   let studentsSortField = 'name';
   let studentsSortDir   = 'asc';
 
+  window.updateStudentSortBtns = function() {
+    document.getElementById('st-asc-btn').style.background  = studentsSortDir === 'asc'  ? 'var(--navy)' : '';
+    document.getElementById('st-asc-btn').style.color       = studentsSortDir === 'asc'  ? '#fff'        : '';
+    document.getElementById('st-desc-btn').style.background = studentsSortDir === 'desc' ? 'var(--navy)' : '';
+    document.getElementById('st-desc-btn').style.color      = studentsSortDir === 'desc' ? '#fff'        : '';
+  };
+
   async function loadStudents() {
     const snap = await get(ref(db, 'students'));
     studentsData = [];
@@ -1402,27 +1402,30 @@
     const search = (document.getElementById('st-search')?.value || '').toLowerCase();
 
     let data = studentsData.filter(s =>
-      !search || s.name.toLowerCase().includes(search) ||
-      s.phone.includes(search) || s.email.toLowerCase().includes(search) ||
-      s.city.toLowerCase().includes(search)
+      !search ||
+      s.name.toLowerCase().includes(search) ||
+      s.phone.includes(search) ||
+      s.email.toLowerCase().includes(search) ||
+      s.city.toLowerCase().includes(search) ||
+      s.notes.toLowerCase().includes(search)
     );
 
     data.sort((a,b) => {
       const dir = studentsSortDir === 'asc' ? 1 : -1;
-      if (studentsSortField === 'name')  return a.name.localeCompare(b.name, 'he') * dir;
-      if (studentsSortField === 'phone') return a.phone.localeCompare(b.phone) * dir;
-      return (b.updatedAt - a.updatedAt) * dir;
+      return a.name.localeCompare(b.name, 'he') * dir;
     });
 
     list.innerHTML = '';
     if (!data.length) { list.innerHTML = '<p style="font-size:0.83rem;color:var(--muted)">לא נמצאו תלמידים</p>'; return; }
 
     data.forEach(s => {
+      const joinDate = s.updatedAt ? new Date(s.updatedAt).toLocaleDateString('he-IL') : '—';
       const div = document.createElement('div');
       div.className = 'request-item';
       div.innerHTML = `
         <div class="req-header">
           <span class="req-name">${s.name || '—'}</span>
+          <span style="font-size:0.72rem; color:var(--muted);">הצטרף: ${joinDate}</span>
         </div>
         <div class="req-detail">📱 ${s.phone.slice(0,3)+'-'+s.phone.slice(3)}</div>
         ${s.email ? `<div class="req-detail">✉️ ${s.email}</div>` : ''}
