@@ -981,7 +981,7 @@
       const actionStatus = isPending ? 'נדחה' : 'בוטל ע"י מנהל';
       const actionLabel  = isPending ? 'נדחתה' : 'בוטלה';
 
-      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', slot, action: actionLabel, status: actionStatus, by: 'מנהל' });
+      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', slot, action: actionLabel, status: actionStatus, by: 'מנהל', amount: (!isPending && r.amount) ? -(r.amount) : 0 });
 
       if (r.email && EMAILJS_SERVICE !== 'YOUR_SERVICE_ID') {
         const parts = slot.split('_');
@@ -1091,7 +1091,7 @@
       slot: rescheduleNewSlot,
       action: 'שונה',
       status: `שונה מ: ${rescheduleTargetSlot} → ${rescheduleNewSlot}`,
-      by: 'מנהל', amount: r.amount||0
+      by: 'מנהל'
     });
     closeDialog('reschedule-dialog');
     showAlert('מועד השיעור שונה ✅', 'success');

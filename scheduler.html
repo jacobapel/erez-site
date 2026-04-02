@@ -844,49 +844,6 @@
     }
   };
 
-  /* ===== ניקוי שיעורים שעברו — העברה ל-completed/ ===== */
-  async function cleanExpiredLessons() {
-    const snap = await get(ref(db, 'requests'));
-    if (!snap.exists()) return;
-    const now = new Date();
-    const safetyDate = new Date(now.getFullYear(), now.getMonth() - 1, 1); // לפחות חודש אחורה
-    const updates = [];
-    Object.entries(snap.val()).forEach(([id, r]) => {
-      const futureSlots  = (r.slots||[]).filter(s => {
-        try {
-          const d = slotToDate(s);
-          /* בטיחות — אל תמחק אם התאריך לא תקין או עתידי */
-          if (d.getFullYear() < 2024) return true; // תאריך לא תקין — שמור
-          return d > now;
-        } catch { return true; } // שגיאה — שמור
-      });
-      const expiredSlots = (r.slots||[]).filter(s => {
-        try {
-          const d = slotToDate(s);
-          if (d.getFullYear() < 2024) return false; // תאריך לא תקין — אל תמחק
-          return d <= safetyDate; // רק אם עבר לפחות חודש
-        } catch { return false; }
-      });
-
-      expiredSlots.forEach(slot => {
-        const cRef = push(ref(db, 'completed'));
-        updates.push(set(cRef, {
-          ...r,
-          slots: [slot],
-          status: r.status === 'approved' ? 'completed' : r.status,
-          archivedAt: Date.now()
-        }));
-      });
-
-      if (futureSlots.length === 0) {
-        updates.push(remove(ref(db, 'requests/' + id)));
-      } else if (expiredSlots.length > 0) {
-        updates.push(update(ref(db, 'requests/' + id), { slots: futureSlots }));
-      }
-    });
-    await Promise.all(updates);
-  }
-
   /* ===== שליחת בקשה ===== */
   window.submitRequest = async function() {
     const name  = document.getElementById('s-name').value.trim();
@@ -1136,7 +1093,7 @@
     if (snap.exists()) {
       const r = snap.val();
       /* רישום לוג */
-      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', slot: cancelTargetSlot, action: 'בוטלה', status: 'בוטל ע"י תלמיד', by: 'תלמיד' });
+      await logAction({ reqId: cancelTargetId, name: r.name, phone: r.phone, email: r.email||'', city: r.city||'', slot: cancelTargetSlot, action: 'בוטלה', status: 'בוטל ע"י תלמיד', by: 'תלמיד', amount: (r.status === 'approved' && r.amount) ? -(r.amount) : 0 });
       /* הסר רק את ה-slot הזה מהבקשה */
       const remaining = (r.slots||[]).filter(s => s !== cancelTargetSlot);
       if (remaining.length === 0) {
@@ -1232,7 +1189,7 @@
     document.getElementById('nav-back-mobile').classList.add('hidden');
   }
 
-  cleanExpiredLessons().then(loadSchedule);
+  loadSchedule();
 </script>
 
 </body>
