@@ -395,7 +395,7 @@
     </div>
 
     <div class="frontal-notice">
-      💡 שיעורים מתקיימים בזום. לשיעור פרונטלי — אנא צור קשר ישירות עם ארז לפני הבחירה.
+      💡 שיעורים מתקיימים בזום. לשיעור פרונטלי — רצוי ליצור קשר ישירות עם ארז לפני הבחירה.
     </div>
 
     <div class="card">
@@ -452,13 +452,6 @@
         <button class="btn btn-navy" onclick="loadMyLessons()">הצג</button>
       </div>
       <input type="text" class="search-bar" id="my-search" placeholder="חיפוש..." oninput="filterMyLessons()" style="display:none;" />
-      <div style="display:none; gap:6px; margin-bottom:0.8rem; flex-wrap:wrap; align-items:center;" id="my-sort-row">
-        <span style="font-size:0.78rem; color:var(--muted);">מיון:</span>
-        <select onchange="myLessonsSortDir=this.value; renderMyLessons()" style="padding:4px 8px; border:0.5px solid var(--border); border-radius:6px; font-size:0.78rem; background:var(--cream);">
-          <option value="asc">↑ תאריך עולה</option>
-          <option value="desc">↓ תאריך יורד</option>
-        </select>
-      </div>
       <div id="my-lessons-list"></div>
     </div>
   </div>
@@ -968,7 +961,6 @@
     }
 
     document.getElementById('my-search').style.display = myLessonsData.length ? 'block' : 'none';
-    document.getElementById('my-sort-row').style.display = myLessonsData.length ? 'flex' : 'none';
     renderMyLessons();
   };
 
