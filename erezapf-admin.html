@@ -477,12 +477,24 @@
       <div class="page-header"><h1>לוג פעולות</h1></div>
       <p style="font-size:0.78rem; color:var(--muted); margin-bottom:1rem;">✶ כולל בקשות מאושרות וממתינות שפג תקפם</p>
 
-      <!-- כפתורי ייצוא/ייבוא -->
+      <!-- גיבוי מלא -->
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-title">גיבוי ושחזור מלא</div>
+        <p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">גיבוי כולל: בקשות, תלמידים, לוח זמנים, לוג פעולות</p>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+          <button class="btn btn-navy" onclick="window.exportFullBackup()">💾 הורד גיבוי מלא</button>
+          <label class="btn btn-outline" style="cursor:pointer;">
+            📤 שחזר מגיבוי <input type="file" accept=".json" onchange="window.importFullBackup(event)" style="display:none;" />
+          </label>
+        </div>
+      </div>
+
+      <!-- כפתורי ייצוא/ייבוא לוג -->
       <div style="display:flex; gap:6px; margin-bottom:1rem; flex-wrap:wrap;">
-        <button class="btn btn-outline btn-sm" onclick="exportLog('csv')">📥 ייצוא CSV</button>
-        <button class="btn btn-outline btn-sm" onclick="exportLog('json')">📥 ייצוא JSON</button>
+        <button class="btn btn-outline btn-sm" onclick="exportLog('csv')">📥 ייצוא לוג CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="exportLog('json')">📥 ייצוא לוג JSON</button>
         <label class="btn btn-outline btn-sm" style="cursor:pointer;">
-          📤 ייבוא JSON <input type="file" accept=".json" onchange="importLog(event)" style="display:none;" />
+          📤 ייבוא לוג JSON <input type="file" accept=".json" onchange="importLog(event)" style="display:none;" />
         </label>
       </div>
 
@@ -1425,6 +1437,66 @@
       await Promise.all(updates);
       showAlert(`יובאו ${items.length} רשומות ✅`, 'success');
       loadLogAll();
+    } catch (e) {
+      showAlert('שגיאה בקריאת הקובץ', 'error');
+    }
+    event.target.value = '';
+  };
+
+  /* ===== גיבוי ושחזור מלא ===== */
+  window.exportFullBackup = async function() {
+    showAlert('מכין גיבוי...', 'info');
+    const [reqSnap, studSnap, schSnap, logSnap] = await Promise.all([
+      get(ref(db, 'requests')),
+      get(ref(db, 'students')),
+      get(ref(db, 'schedule')),
+      get(ref(db, 'log'))
+    ]);
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      version: '1.0',
+      requests: reqSnap.exists()  ? reqSnap.val()  : {},
+      students: studSnap.exists() ? studSnap.val() : {},
+      schedule: schSnap.exists()  ? schSnap.val()  : [],
+      log:      logSnap.exists()  ? logSnap.val()  : {}
+    };
+    const date = new Date().toLocaleDateString('he-IL').replace(/\./g,'-');
+    downloadBlob(
+      new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' }),
+      `erez-backup-${date}.json`
+    );
+    showAlert('הגיבוי הורד בהצלחה ✅', 'success');
+  };
+
+  window.importFullBackup = async function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!confirm('שחזור יחליף את כל הנתונים הקיימים. להמשיך?')) {
+      event.target.value = ''; return;
+    }
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+      if (!backup.version) { showAlert('קובץ לא תקין', 'error'); return; }
+
+      showAlert('משחזר נתונים...', 'info');
+      const updates = [];
+      if (backup.requests) updates.push(set(ref(db, 'requests'), backup.requests));
+      if (backup.students) updates.push(set(ref(db, 'students'), backup.students));
+      if (backup.schedule) updates.push(set(ref(db, 'schedule'), backup.schedule));
+      if (backup.log)      updates.push(set(ref(db, 'log'),      backup.log));
+      await Promise.all(updates);
+      showAlert('השחזור הושלם בהצלחה ✅', 'success');
+      /* טען מחדש */
+      const [schSnap, reqSnap, ewSnap] = await Promise.all([
+        get(ref(db, 'schedule')),
+        get(ref(db, 'requests')),
+        get(ref(db, 'settings/extraWeeks'))
+      ]);
+      schedule = schSnap.exists() ? schSnap.val() : DEFAULT_SCHEDULE;
+      allRequests = reqSnap.exists() ? reqSnap.val() : {};
+      renderRequests();
+      renderScheduleForm();
     } catch (e) {
       showAlert('שגיאה בקריאת הקובץ', 'error');
     }
