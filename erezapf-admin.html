@@ -1505,18 +1505,23 @@
   function fmtRecord(r, key) {
     if (!r) return key;
     const parts = [];
-    if (r.name)      parts.push(`שם: ${r.name}`);
-    if (r.phone)     parts.push(`טל: ${r.phone}`);
-    if (r.email)     parts.push(`מייל: ${r.email}`);
-    if (r.city)      parts.push(`יישוב: ${r.city}`);
-    if (r.slot)      parts.push(`שיעור: ${r.slot}`);
-    if (r.status)    parts.push(`סטטוס: ${r.status}`);
-    if (r.action)    parts.push(`פעולה: ${r.action}`);
-    if (r.by)        parts.push(`ע"י: ${r.by}`);
-    if (r.amount)    parts.push(`סכום: ${r.amount} ₪`);
-    if (r.timestamp) parts.push(`זמן: ${fmtDate(r.timestamp)}`);
-    if (r.updatedAt) parts.push(`עודכן: ${fmtDate(r.updatedAt)}`);
-    return parts.length ? parts.join(' | ') : key;
+    if (r.name)       parts.push(`שם: ${r.name}`);
+    if (r.phone)      parts.push(`טל: ${r.phone}`);
+    if (r.email)      parts.push(`מייל: ${r.email}`);
+    if (r.city)       parts.push(`יישוב: ${r.city}`);
+    if (r.notes)      parts.push(`הערות: ${r.notes}`);
+    if (r.slot)       parts.push(`שיעור: ${r.slot}`);
+    if (r.slots)      parts.push(`שיעורים: ${Array.isArray(r.slots) ? r.slots.join(', ') : r.slots}`);
+    if (r.status)     parts.push(`סטטוס: ${r.status}`);
+    if (r.action)     parts.push(`פעולה: ${r.action}`);
+    if (r.by)         parts.push(`ע"י: ${r.by}`);
+    if (r.amount)     parts.push(`סכום: ${r.amount} ₪`);
+    if (r.reqId)      parts.push(`מזהה: ${r.reqId}`);
+    if (r.timestamp)  parts.push(`זמן פעולה: ${fmtDate(r.timestamp)}`);
+    if (r.updatedAt)  parts.push(`עודכן: ${fmtDate(r.updatedAt)}`);
+    if (r.cancelledAt) parts.push(`בוטל: ${fmtDate(r.cancelledAt)}`);
+    if (r.archivedAt)  parts.push(`אורכב: ${fmtDate(r.archivedAt)}`);
+    return parts.length ? parts.join('<br>') : key;
   }
 
   function diffFields(r1, r2) {
@@ -1587,27 +1592,24 @@
 
       added.forEach(k => {
         const r = d2[k];
-        html += `<div style="background:var(--green-bg); border-radius:6px; padding:6px 10px; margin-bottom:4px; font-size:0.78rem;">
-          <strong>✅ נוסף</strong> — ${fmtRecord(r, k)}
-          ${r.timestamp||r.updatedAt ? `<br><span style="font-size:0.72rem; color:var(--muted);">🕐 ${fmtDate(r.timestamp||r.updatedAt)}</span>` : ''}
+        html += `<div style="background:var(--green-bg); border-radius:6px; padding:8px 12px; margin-bottom:6px; font-size:0.78rem; line-height:1.7;">
+          <strong>✅ נוסף</strong><br>${fmtRecord(r, k)}
         </div>`;
       });
 
       removed.forEach(k => {
         const r = d1[k];
-        html += `<div style="background:var(--red-bg); border-radius:6px; padding:6px 10px; margin-bottom:4px; font-size:0.78rem;">
-          <strong>❌ נמחק</strong> — ${fmtRecord(r, k)}
-          ${r.timestamp||r.updatedAt ? `<br><span style="font-size:0.72rem; color:var(--muted);">🕐 ${fmtDate(r.timestamp||r.updatedAt)}</span>` : ''}
+        html += `<div style="background:var(--red-bg); border-radius:6px; padding:8px 12px; margin-bottom:6px; font-size:0.78rem; line-height:1.7;">
+          <strong>❌ נמחק</strong><br>${fmtRecord(r, k)}
         </div>`;
       });
 
       changed.forEach(k => {
         const r1 = d1[k], r2 = d2[k];
         const diffs = diffFields(r1, r2);
-        html += `<div style="background:#fff8e6; border-radius:6px; padding:6px 10px; margin-bottom:4px; font-size:0.78rem; color:#7a5a10;">
-          <strong>✏️ שונה</strong> — ${fmtRecord(r2, k)}
-          ${r2.timestamp||r2.updatedAt ? `<br><span style="font-size:0.72rem;">🕐 ${fmtDate(r2.timestamp||r2.updatedAt)}</span>` : ''}
-          ${diffs.length ? `<br><span style="font-size:0.72rem;">${diffs.join(' &nbsp;•&nbsp; ')}</span>` : ''}
+        html += `<div style="background:#fff8e6; border-radius:6px; padding:8px 12px; margin-bottom:6px; font-size:0.78rem; color:#7a5a10; line-height:1.7;">
+          <strong>✏️ שונה</strong><br>${fmtRecord(r2, k)}
+          ${diffs.length ? `<br><strong style="font-size:0.72rem;">שינויים: </strong><span style="font-size:0.72rem;">${diffs.join(' &nbsp;•&nbsp; ')}</span>` : ''}
         </div>`;
       });
 
