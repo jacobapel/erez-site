@@ -396,6 +396,7 @@
 
     <div class="frontal-notice">
       💡 שיעורים מתקיימים בזום. לשיעור פרונטלי — רצוי ליצור קשר ישירות עם ארז לפני הבחירה.
+      <br>ביטול שיעור אפשרי עד 24 שעות לפני המועד שנקבע.
     </div>
 
     <div class="card">
@@ -450,10 +451,6 @@
       <div style="display:flex; gap:0.6rem; margin-bottom:1rem;">
         <input type="tel" id="my-phone" placeholder="05X-XXXXXXX" style="flex:1;" maxlength="11" />
         <button class="btn btn-navy" onclick="loadMyLessons()">הצג</button>
-      </div>
-      <div id="my-search-row" style="display:none; gap:6px; margin-bottom:0.8rem; align-items:center;">
-        <input type="text" class="search-bar" id="my-search" placeholder="חיפוש..." oninput="filterMyLessons()" style="margin-bottom:0; flex:1;" />
-        <button class="btn btn-outline" onclick="window.clearSearch('my-search', window.filterMyLessons)">נקה</button>
       </div>
       <div id="my-lessons-list"></div>
     </div>
@@ -963,15 +960,13 @@
       });
     }
 
-    document.getElementById('my-search-row').style.display = myLessonsData.length ? 'flex' : 'none';
     renderMyLessons();
   };
 
   function renderMyLessons() {
     const list = document.getElementById('my-lessons-list');
-    const search = document.getElementById('my-search').value.toLowerCase();
 
-    let data = myLessonsData.filter(l => !search || l.slot.toLowerCase().includes(search));
+    let data = [...myLessonsData];
     data.sort((a,b) => {
       const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
       return myLessonsSortDir === 'asc' ? da - db2 : db2 - da;
