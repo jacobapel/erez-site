@@ -486,6 +486,7 @@
           <label class="btn btn-outline" style="cursor:pointer;">
             📤 שחזר מגיבוי <input type="file" accept=".json" onchange="window.importFullBackup(event)" style="display:none;" />
           </label>
+          <button class="btn btn-outline" onclick="window.openCompareDialog()">🔍 השווה שני גיבויים</button>
         </div>
       </div>
 
@@ -575,6 +576,34 @@
     <div class="dialog-btns">
       <button class="btn btn-outline" onclick="closeDialog('reschedule-dialog')">ביטול</button>
       <button class="btn btn-navy" onclick="confirmReschedule()">אשר שינוי</button>
+    </div>
+  </div>
+</div>
+
+<!-- דיאלוג השוואת גיבויים -->
+<div class="dialog-overlay" id="compare-dialog" style="align-items:flex-start; padding:1rem; overflow-y:auto;">
+  <div class="dialog" style="max-width:680px; width:95%; margin:auto; text-align:right;">
+    <h3>🔍 השוואת שני גיבויים</h3>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem; margin:1rem 0;">
+      <div>
+        <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.3rem;">גיבוי ישן (קובץ 1)</label>
+        <label class="btn btn-outline" style="cursor:pointer; width:100%; justify-content:center;">
+          📂 בחר קובץ <input type="file" id="compare-file1" accept=".json" style="display:none;" onchange="window.compareFileSelected(1,this)" />
+        </label>
+        <div id="compare-name1" style="font-size:0.72rem; color:var(--muted); margin-top:4px; text-align:center;"></div>
+      </div>
+      <div>
+        <label style="font-size:0.78rem; color:var(--muted); display:block; margin-bottom:0.3rem;">גיבוי חדש (קובץ 2)</label>
+        <label class="btn btn-outline" style="cursor:pointer; width:100%; justify-content:center;">
+          📂 בחר קובץ <input type="file" id="compare-file2" accept=".json" style="display:none;" onchange="window.compareFileSelected(2,this)" />
+        </label>
+        <div id="compare-name2" style="font-size:0.72rem; color:var(--muted); margin-top:4px; text-align:center;"></div>
+      </div>
+    </div>
+    <button class="btn btn-navy" style="width:100%; margin-bottom:1rem;" onclick="window.runCompare()">השווה</button>
+    <div id="compare-result" style="max-height:400px; overflow-y:auto; font-size:0.82rem;"></div>
+    <div style="margin-top:1rem; text-align:center;">
+      <button class="btn btn-outline" onclick="closeDialog('compare-dialog')">סגור</button>
     </div>
   </div>
 </div>
@@ -1441,6 +1470,109 @@
       showAlert('שגיאה בקריאת הקובץ', 'error');
     }
     event.target.value = '';
+  };
+
+  /* ===== השוואת גיבויים ===== */
+  let compareData = { 1: null, 2: null };
+
+  window.openCompareDialog = function() {
+    compareData = { 1: null, 2: null };
+    document.getElementById('compare-name1').textContent = '';
+    document.getElementById('compare-name2').textContent = '';
+    document.getElementById('compare-result').innerHTML  = '';
+    document.getElementById('compare-file1').value = '';
+    document.getElementById('compare-file2').value = '';
+    document.getElementById('compare-dialog').classList.add('show');
+  };
+
+  window.compareFileSelected = async function(num, input) {
+    const file = input.files[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      compareData[num] = JSON.parse(text);
+      document.getElementById('compare-name' + num).textContent = file.name;
+    } catch {
+      showAlert('קובץ לא תקין', 'error');
+    }
+  };
+
+  window.runCompare = function() {
+    if (!compareData[1] || !compareData[2]) {
+      showAlert('יש לבחור שני קבצים', 'error'); return;
+    }
+    const b1 = compareData[1], b2 = compareData[2];
+    const result = document.getElementById('compare-result');
+    result.innerHTML = '';
+
+    const tables = [
+      { key: 'requests', label: 'בקשות',      idField: null },
+      { key: 'students', label: 'תלמידים',    idField: null },
+      { key: 'log',      label: 'לוג פעולות', idField: null },
+      { key: 'schedule', label: 'לוח זמנים',  idField: null },
+    ];
+
+    let totalChanges = 0;
+
+    tables.forEach(({ key, label }) => {
+      const d1 = b1[key] || {};
+      const d2 = b2[key] || {};
+
+      /* schedule הוא מערך — השוואה פשוטה */
+      if (key === 'schedule') {
+        const s1 = JSON.stringify(d1), s2 = JSON.stringify(d2);
+        if (s1 !== s2) {
+          totalChanges++;
+          result.innerHTML += `<div style="margin-bottom:1rem;">
+            <strong style="color:var(--navy);">📋 ${label}</strong>
+            <div style="background:#fff8e6; border-radius:6px; padding:0.5rem; margin-top:0.3rem; font-size:0.78rem; color:#7a5a10;">✏️ לוח הזמנים השתנה</div>
+          </div>`;
+        }
+        return;
+      }
+
+      const keys1 = new Set(Object.keys(d1));
+      const keys2 = new Set(Object.keys(d2));
+      const added   = [...keys2].filter(k => !keys1.has(k));
+      const removed = [...keys1].filter(k => !keys2.has(k));
+      const changed = [...keys1].filter(k => keys2.has(k) && JSON.stringify(d1[k]) !== JSON.stringify(d2[k]));
+
+      if (!added.length && !removed.length && !changed.length) return;
+
+      totalChanges += added.length + removed.length + changed.length;
+
+      let html = `<div style="margin-bottom:1rem;"><strong style="color:var(--navy);">📋 ${label}</strong><div style="margin-top:0.4rem;">`;
+
+      added.forEach(k => {
+        const r = d2[k];
+        html += `<div style="background:var(--green-bg); border-radius:6px; padding:4px 8px; margin-bottom:3px; font-size:0.78rem;">
+          ✅ נוסף: ${r.name||r.action||k} ${r.phone ? '| ' + r.phone : ''} ${r.slot||''}
+        </div>`;
+      });
+
+      removed.forEach(k => {
+        const r = d1[k];
+        html += `<div style="background:var(--red-bg); border-radius:6px; padding:4px 8px; margin-bottom:3px; font-size:0.78rem;">
+          ❌ נמחק: ${r.name||r.action||k} ${r.phone ? '| ' + r.phone : ''} ${r.slot||''}
+        </div>`;
+      });
+
+      changed.forEach(k => {
+        const r = d2[k];
+        html += `<div style="background:#fff8e6; border-radius:6px; padding:4px 8px; margin-bottom:3px; font-size:0.78rem; color:#7a5a10;">
+          ✏️ שונה: ${r.name||r.action||k} ${r.phone ? '| ' + r.phone : ''} ${r.slot||''}
+        </div>`;
+      });
+
+      html += '</div></div>';
+      result.innerHTML += html;
+    });
+
+    if (totalChanges === 0) {
+      result.innerHTML = '<p style="color:var(--green); text-align:center; padding:1rem;">✅ אין הבדלים בין שני הגיבויים</p>';
+    } else {
+      result.innerHTML = `<p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">נמצאו ${totalChanges} שינויים:</p>` + result.innerHTML;
+    }
   };
 
   /* ===== גיבוי ושחזור מלא ===== */
