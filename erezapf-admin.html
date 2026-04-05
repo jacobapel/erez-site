@@ -1497,19 +1497,60 @@
     }
   };
 
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleString('he-IL', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+
+  function fmtRecord(r, key) {
+    if (!r) return key;
+    const parts = [];
+    if (r.name)      parts.push(`שם: ${r.name}`);
+    if (r.phone)     parts.push(`טל: ${r.phone}`);
+    if (r.email)     parts.push(`מייל: ${r.email}`);
+    if (r.city)      parts.push(`יישוב: ${r.city}`);
+    if (r.slot)      parts.push(`שיעור: ${r.slot}`);
+    if (r.status)    parts.push(`סטטוס: ${r.status}`);
+    if (r.action)    parts.push(`פעולה: ${r.action}`);
+    if (r.by)        parts.push(`ע"י: ${r.by}`);
+    if (r.amount)    parts.push(`סכום: ${r.amount} ₪`);
+    if (r.timestamp) parts.push(`זמן: ${fmtDate(r.timestamp)}`);
+    if (r.updatedAt) parts.push(`עודכן: ${fmtDate(r.updatedAt)}`);
+    return parts.length ? parts.join(' | ') : key;
+  }
+
+  function diffFields(r1, r2) {
+    const diffs = [];
+    const allKeys = new Set([...Object.keys(r1||{}), ...Object.keys(r2||{})]);
+    allKeys.forEach(k => {
+      if (k === 'updatedAt' || k === 'timestamp') return;
+      const v1 = JSON.stringify(r1?.[k]), v2 = JSON.stringify(r2?.[k]);
+      if (v1 !== v2) {
+        const label = { name:'שם', phone:'טלפון', email:'אימייל', city:'יישוב',
+          status:'סטטוס', amount:'סכום', slots:'שעות', notes:'הערות',
+          action:'פעולה', by:'ע"י', slot:'שיעור' }[k] || k;
+        diffs.push(`${label}: ${r1?.[k]||'—'} ← ${r2?.[k]||'—'}`);
+      }
+    });
+    return diffs;
+  }
+
   window.runCompare = function() {
     if (!compareData[1] || !compareData[2]) {
       showAlert('יש לבחור שני קבצים', 'error'); return;
     }
     const b1 = compareData[1], b2 = compareData[2];
     const result = document.getElementById('compare-result');
-    result.innerHTML = '';
+
+    const t1 = b1.exportedAt ? fmtDate(new Date(b1.exportedAt).getTime()) : '—';
+    const t2 = b2.exportedAt ? fmtDate(new Date(b2.exportedAt).getTime()) : '—';
+    result.innerHTML = `<p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">גיבוי 1: ${t1} &nbsp;|&nbsp; גיבוי 2: ${t2}</p>`;
 
     const tables = [
-      { key: 'requests', label: 'בקשות',      idField: null },
-      { key: 'students', label: 'תלמידים',    idField: null },
-      { key: 'log',      label: 'לוג פעולות', idField: null },
-      { key: 'schedule', label: 'לוח זמנים',  idField: null },
+      { key: 'requests', label: 'בקשות'      },
+      { key: 'students', label: 'תלמידים'    },
+      { key: 'log',      label: 'לוג פעולות' },
+      { key: 'schedule', label: 'לוח זמנים'  },
     ];
 
     let totalChanges = 0;
@@ -1518,14 +1559,16 @@
       const d1 = b1[key] || {};
       const d2 = b2[key] || {};
 
-      /* schedule הוא מערך — השוואה פשוטה */
       if (key === 'schedule') {
         const s1 = JSON.stringify(d1), s2 = JSON.stringify(d2);
         if (s1 !== s2) {
           totalChanges++;
           result.innerHTML += `<div style="margin-bottom:1rem;">
             <strong style="color:var(--navy);">📋 ${label}</strong>
-            <div style="background:#fff8e6; border-radius:6px; padding:0.5rem; margin-top:0.3rem; font-size:0.78rem; color:#7a5a10;">✏️ לוח הזמנים השתנה</div>
+            <div style="background:#fff8e6; border-radius:6px; padding:6px 10px; margin-top:0.3rem; font-size:0.78rem; color:#7a5a10;">
+              ✏️ לוח הזמנים השתנה<br>
+              <span style="font-size:0.72rem;">לפני: ${JSON.stringify(d1)}<br>אחרי: ${JSON.stringify(d2)}</span>
+            </div>
           </div>`;
         }
         return;
@@ -1538,29 +1581,33 @@
       const changed = [...keys1].filter(k => keys2.has(k) && JSON.stringify(d1[k]) !== JSON.stringify(d2[k]));
 
       if (!added.length && !removed.length && !changed.length) return;
-
       totalChanges += added.length + removed.length + changed.length;
 
-      let html = `<div style="margin-bottom:1rem;"><strong style="color:var(--navy);">📋 ${label}</strong><div style="margin-top:0.4rem;">`;
+      let html = `<div style="margin-bottom:1.2rem;"><strong style="color:var(--navy);">📋 ${label} (${added.length} נוספו, ${removed.length} נמחקו, ${changed.length} שונו)</strong><div style="margin-top:0.4rem;">`;
 
       added.forEach(k => {
         const r = d2[k];
-        html += `<div style="background:var(--green-bg); border-radius:6px; padding:4px 8px; margin-bottom:3px; font-size:0.78rem;">
-          ✅ נוסף: ${r.name||r.action||k} ${r.phone ? '| ' + r.phone : ''} ${r.slot||''}
+        html += `<div style="background:var(--green-bg); border-radius:6px; padding:6px 10px; margin-bottom:4px; font-size:0.78rem;">
+          <strong>✅ נוסף</strong> — ${fmtRecord(r, k)}
+          ${r.timestamp||r.updatedAt ? `<br><span style="font-size:0.72rem; color:var(--muted);">🕐 ${fmtDate(r.timestamp||r.updatedAt)}</span>` : ''}
         </div>`;
       });
 
       removed.forEach(k => {
         const r = d1[k];
-        html += `<div style="background:var(--red-bg); border-radius:6px; padding:4px 8px; margin-bottom:3px; font-size:0.78rem;">
-          ❌ נמחק: ${r.name||r.action||k} ${r.phone ? '| ' + r.phone : ''} ${r.slot||''}
+        html += `<div style="background:var(--red-bg); border-radius:6px; padding:6px 10px; margin-bottom:4px; font-size:0.78rem;">
+          <strong>❌ נמחק</strong> — ${fmtRecord(r, k)}
+          ${r.timestamp||r.updatedAt ? `<br><span style="font-size:0.72rem; color:var(--muted);">🕐 ${fmtDate(r.timestamp||r.updatedAt)}</span>` : ''}
         </div>`;
       });
 
       changed.forEach(k => {
-        const r = d2[k];
-        html += `<div style="background:#fff8e6; border-radius:6px; padding:4px 8px; margin-bottom:3px; font-size:0.78rem; color:#7a5a10;">
-          ✏️ שונה: ${r.name||r.action||k} ${r.phone ? '| ' + r.phone : ''} ${r.slot||''}
+        const r1 = d1[k], r2 = d2[k];
+        const diffs = diffFields(r1, r2);
+        html += `<div style="background:#fff8e6; border-radius:6px; padding:6px 10px; margin-bottom:4px; font-size:0.78rem; color:#7a5a10;">
+          <strong>✏️ שונה</strong> — ${fmtRecord(r2, k)}
+          ${r2.timestamp||r2.updatedAt ? `<br><span style="font-size:0.72rem;">🕐 ${fmtDate(r2.timestamp||r2.updatedAt)}</span>` : ''}
+          ${diffs.length ? `<br><span style="font-size:0.72rem;">${diffs.join(' &nbsp;•&nbsp; ')}</span>` : ''}
         </div>`;
       });
 
@@ -1569,9 +1616,9 @@
     });
 
     if (totalChanges === 0) {
-      result.innerHTML = '<p style="color:var(--green); text-align:center; padding:1rem;">✅ אין הבדלים בין שני הגיבויים</p>';
+      result.innerHTML += '<p style="color:var(--green); text-align:center; padding:1rem;">✅ אין הבדלים בין שני הגיבויים</p>';
     } else {
-      result.innerHTML = `<p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">נמצאו ${totalChanges} שינויים:</p>` + result.innerHTML;
+      result.innerHTML = `<p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">גיבוי 1: ${t1} &nbsp;|&nbsp; גיבוי 2: ${t2} &nbsp;|&nbsp; <strong>סה"כ ${totalChanges} שינויים</strong></p>` + result.innerHTML.replace(`<p style="font-size:0.78rem; color:var(--muted); margin-bottom:0.8rem;">גיבוי 1: ${t1} &nbsp;|&nbsp; גיבוי 2: ${t2}</p>`, '');
     }
   };
 
