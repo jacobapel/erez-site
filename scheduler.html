@@ -432,7 +432,8 @@
       <div class="schedule-grid" id="student-schedule">
         <div class="spinner">טוען זמנים...</div>
       </div>
-      <p style="font-size:0.75rem; color:var(--muted); margin-top:0.8rem;">ניתן לבחור עד 3 זמנים</p>
+      <p style="font-size:0.75rem; color:var(--muted); margin-top:0.8rem;">ניתן לבחור עד <span id="max-lessons-text">3</span> זמנים</p>
+      <p id="remaining-notice" style="font-size:0.75rem; color:var(--navy); margin-top:0.3rem;"></p>
     </div>
 
     <button class="btn btn-gold" onclick="submitRequest()">שלח בקשה לאישור ←</button>
@@ -520,13 +521,13 @@
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
   const firebaseConfig = {
-    apiKey:            "AIzaSyCQTxJbPmhKOb76zguPaXB_K8E3GwWx6yQ",
-    authDomain:        "erez-teacher.firebaseapp.com",
-    databaseURL:       "https://erez-teacher-default-rtdb.europe-west1.firebasedatabase.app",
-    projectId:         "erez-teacher",
-    storageBucket:     "erez-teacher.firebasestorage.app",
-    messagingSenderId: "364569139715",
-    appId:             "1:364569139715:web:ef21e7fe86c198fc908c36"
+    apiKey:            "AIzaSyAgFl873FygrpXep3qaDao7OQUhcoeMTho",
+    authDomain:        "erez-teacher-dev.firebaseapp.com",
+    databaseURL:       "https://erez-teacher-dev-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId:         "erez-teacher-dev",
+    storageBucket:     "erez-teacher-dev.firebasestorage.app",
+    messagingSenderId: "994576631028",
+    appId:             "1:994576631028:web:8537fc46b2b19627000aa1"
   };
 
   const app = initializeApp(firebaseConfig);
@@ -665,6 +666,9 @@
     const clean = parsePhone(phone);
     setSessionPhone(clean);
 
+    /* עדכן הודעת נותרו */
+    updateRemainingNotice();
+
     /* חפש ברשימת התלמידים השמורה */
     const studentSnap = await get(ref(db, 'students/' + clean));
     if (studentSnap.exists()) {
@@ -718,18 +722,50 @@
     });
   }
 
+  async function updateRemainingNotice() {
+    const el = document.getElementById('remaining-notice');
+    if (!el || !sessionPhone) return;
+    const snap = await get(ref(db, 'requests'));
+    const now = new Date();
+    let activeCount = 0;
+    if (snap.exists()) {
+      Object.values(snap.val()).forEach(r => {
+        if (r.phone === sessionPhone && (r.status === 'approved' || r.status === 'pending')) {
+          (r.slots||[]).forEach(s => { if (slotToDate(s) >= now) activeCount++; });
+        }
+      });
+    }
+    const remaining = maxLessons - activeCount;
+    if (remaining <= 0) {
+      el.textContent = `הגעת למכסה המקסימלית של ${maxLessons} שיעורים.`;
+      el.style.color = 'var(--red)';
+    } else {
+      el.textContent = `נותרו לך ${remaining} שיעורים מתוך ${maxLessons} אפשריים.`;
+      el.style.color = 'var(--navy)';
+    }
+  }
+
   /* ===== לוח זמנים ===== */
   let schedule = [];
   let selectedSlots = new Set();
   let currentWeekOffset = 0;
   let allRequests = {};
-  let extraWeeks = 4; // ברירת מחדל — 4 שבועות קדימה
+  let extraWeeks = 4;
+  let maxLessons = 3; // ברירת מחדל
 
   async function loadSchedule() {
     const snap = await get(ref(db, 'schedule'));
     schedule = snap.exists() ? snap.val() : [];
-    const ewSnap = await get(ref(db, 'settings/extraWeeks'));
+    const [ewSnap, mlSnap] = await Promise.all([
+      get(ref(db, 'settings/extraWeeks')),
+      get(ref(db, 'settings/maxLessons'))
+    ]);
     if (ewSnap.exists()) extraWeeks = ewSnap.val();
+    if (mlSnap.exists()) maxLessons = mlSnap.val();
+
+    /* עדכן טקסט מכסה */
+    document.getElementById('max-lessons-text').textContent = maxLessons;
+    updateRemainingNotice();
 
     /* טעינת טלפון שמור */
     const saved = localStorage.getItem('erez_phone');
@@ -831,7 +867,18 @@
       selectedSlots.delete(key);
       btn.classList.remove('selected');
     } else {
-      if (selectedSlots.size >= 3) { showAlert('ניתן לבחור עד 3 זמנים בלבד בכל בקשה', 'error'); return; }
+      /* בדוק מכסה כוללת: בחירות נוכחיות + שיעורים פעילים */
+      const now = new Date();
+      let activeCount = 0;
+      Object.values(allRequests).forEach(r => {
+        if (r.phone === sessionPhone && (r.status === 'approved' || r.status === 'pending')) {
+          (r.slots||[]).forEach(s => { if (slotToDate(s) >= now) activeCount++; });
+        }
+      });
+      if (selectedSlots.size + activeCount >= maxLessons) {
+        showAlert(`הגעת למכסה המקסימלית של ${maxLessons} שיעורים`, 'error');
+        return;
+      }
       selectedSlots.add(key);
       btn.classList.add('selected');
     }
@@ -891,16 +938,19 @@
     const cleanPhone = parsePhone(phone);
     const snap = await get(ref(db, 'requests'));
     let activeCount = 0;
+    const now = new Date();
     if (snap.exists()) {
       Object.values(snap.val()).forEach(r => {
         if (r.phone === cleanPhone && (r.status === 'approved' || r.status === 'pending')) {
-          activeCount += (r.slots||[]).length;
+          (r.slots||[]).forEach(s => {
+            if (slotToDate(s) >= now) activeCount++;
+          });
         }
       });
     }
     const total = activeCount + selectedSlots.size;
-    if (total > 3) {
-      showAlert(`יש לך כבר ${activeCount} שיעורים פעילים. ניתן לבקש עד 3 שיעורים בסה"כ (מאושרים + ממתינים).`, 'error');
+    if (total > maxLessons) {
+      showAlert(`יש לך כבר ${activeCount} שיעורים פעילים. ניתן לבקש עד ${maxLessons} שיעורים בסה"כ (מאושרים + ממתינים).`, 'error');
       return;
     }
 
@@ -965,8 +1015,16 @@
 
   function renderMyLessons() {
     const list = document.getElementById('my-lessons-list');
+    const now = new Date();
 
-    let data = [...myLessonsData];
+    let data = myLessonsData.filter(l => {
+      /* הסתר שיעורים שעברו — רק אם מאושרים או ממתינים */
+      if (l.status === 'approved' || l.status === 'pending') {
+        return slotToDate(l.slot) >= now;
+      }
+      return true; // נדחים תמיד יוצגו
+    });
+
     data.sort((a,b) => {
       const da = slotToDate(a.slot), db2 = slotToDate(b.slot);
       return myLessonsSortDir === 'asc' ? da - db2 : db2 - da;
